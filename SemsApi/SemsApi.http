@@ -1,0 +1,6 @@
+@SemsApi_HostAddress = http://localhost:5277
+
+GET {{SemsApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
