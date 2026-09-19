@@ -7,37 +7,44 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace SemsApi.Services;
-
-public class JwtService : IJwtService
+namespace SemsApi.Services
 {
-    private readonly JwtOptions _options;
-
-    public JwtService(IOptions<JwtOptions> options)
+    public class JwtService : IJwtService
     {
-        _options = options.Value;
-    }
+        private readonly JwtOptions _options;
 
-    public string GenerateToken(User user)
-    {
-        var claims = new List<Claim>
+        public JwtService(IOptions<JwtOptions> options)
         {
-            new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-            new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Role, user.Role.Name),
-            new("googleSub", user.GoogleSubjectId)
-        };
+            _options = options.Value;
+        }
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        public string GenerateToken(User user, IList<string> roles)
+        {
+            var claims = new List<Claim>
+            {
+                new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new(ClaimTypes.Email, user.Email ?? string.Empty),
+                new("googleSub", user.GoogleSubjectId),
+                new(ClaimTypes.Name, $"{user.FirstName} {user.LastName}")
+            };
 
-        var token = new JwtSecurityToken(
-            issuer: _options.Issuer,
-            audience: _options.Audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_options.ExpiryMinutes),
-            signingCredentials: creds);
+            // Add roles
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _options.Issuer,
+                audience: _options.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(_options.ExpiryMinutes),
+                signingCredentials: creds);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
     }
 }

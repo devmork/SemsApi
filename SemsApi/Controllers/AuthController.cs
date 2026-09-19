@@ -1,150 +1,160 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO;
 using SemsApi.Interfaces;
-using SemsApi.Services;
+using SemsApi.Models;
 
-namespace SemsApi.Controllers;
-
-[ApiController]
-[Route("api/auth")]
-public class AuthController : ControllerBase
+namespace SemsApi.Controllers
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IGoogleAuthenticationService _googleAuth;
-    private readonly IJwtService _jwtService;
-
-    public AuthController(
-        ApplicationDbContext context,
-        IGoogleAuthenticationService googleAuth,
-        IJwtService jwtService)
+    [ApiController]
+    [Route("api/auth")]
+    public class AuthController : ControllerBase
     {
-        _context = context;
-        _googleAuth = googleAuth;
-        _jwtService = jwtService;
-    }
+        private readonly ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
+        private readonly IGoogleAuthenticationService _googleAuth;
+        private readonly IJwtService _jwtService;
 
-    [HttpPost("google")]
-    public async Task<ActionResult<LoginResponseDto>> Google([FromBody] GoogleLoginRequest request)
-    {
-        var payload = await _googleAuth.ValidateAsync(request.IdToken);
-        if (payload is null)
+        public AuthController(
+            ApplicationDbContext context,
+            UserManager<User> userManager,
+            IGoogleAuthenticationService googleAuth,
+            IJwtService jwtService)
         {
-            return Unauthorized(new LoginResponseDto
-            {
-                Success = false,
-                Message = "Invalid Google token.",
-                ErrorCode = "INVALID_GOOGLE_TOKEN"
-            });
+            _context = context;
+            _userManager = userManager;
+            _googleAuth = googleAuth;
+            _jwtService = jwtService;
         }
 
-        if (!payload.EmailVerified)
+        [HttpPost("google")]
+        public async Task<ActionResult<LoginResponseDto>> Google([FromBody] GoogleLoginRequest request)
         {
-            return Unauthorized(new LoginResponseDto
+            var payload = await _googleAuth.ValidateAsync(request.IdToken);
+            if (payload is null)
             {
-                Success = false,
-                Message = "Google email is not verified.",
-                ErrorCode = "EMAIL_NOT_VERIFIED"
-            });
+                return Unauthorized(new LoginResponseDto
+                {
+                    Success = false,
+                    Message = "Invalid Google token.",
+                    ErrorCode = "INVALID_GOOGLE_TOKEN"
+                });
+            }
+
+            if (!payload.EmailVerified)
+            {
+                return Unauthorized(new LoginResponseDto
+                {
+                    Success = false,
+                    Message = "Google email is not verified.",
+                    ErrorCode = "EMAIL_NOT_VERIFIED"
+                });
+            }
+
+            var domain = payload.Email.Split('@').Last();
+            var domainAuthorized = await _context.AuthorizedEmailDomains
+                .AnyAsync(d => d.Domain == domain && d.IsActive);
+
+            if (!domainAuthorized)
+            {
+                return StatusCode(403, new LoginResponseDto
+                {
+                    Success = false,
+                    Message = "This email domain is not authorized for SEMS.",
+                    ErrorCode = "DOMAIN_NOT_AUTHORIZED"
+                });
+            }
+
+            // Find user by GoogleSubjectId
+            var user = await _userManager.Users
+                .Include(u => u.Student)
+                .Include(u => u.Teacher)
+                .FirstOrDefaultAsync(u => u.GoogleSubjectId == payload.Subject);
+
+            if (user is null)
+            {
+                return StatusCode(403, new LoginResponseDto
+                {
+                    Success = false,
+                    Message = "This Google account is not registered in SEMS.",
+                    ErrorCode = "USER_NOT_REGISTERED"
+                });
+            }
+
+            if (user.Status != "Active")
+            {
+                return StatusCode(403, new LoginResponseDto
+                {
+                    Success = false,
+                    Message = "This account is disabled.",
+                    ErrorCode = "ACCOUNT_DISABLED"
+                });
+            }
+
+            // Update last login
+            user.LastLoginAt = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+
+            // Get roles from Identity
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var response = new LoginResponseDto
+            {
+                Success = true,
+                Message = "Login successful.",
+                Token = _jwtService.GenerateToken(user, roles),
+                User = new UserProfileDto
+                {
+                    UserId = user.Id,
+                    Email = user.Email ?? string.Empty,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Role = roles.FirstOrDefault() ?? "Unknown"
+                },
+                Student = user.Student is null ? null : new StudentDto
+                {
+                    StudentId = user.Student.StudentId,
+                    StudentNumber = user.Student.StudentNumber,
+                    GradeLevel = user.Student.GradeLevel,
+                    Section = user.Student.Section
+                },
+                Teacher = user.Teacher is null ? null : new TeacherDto
+                {
+                    TeacherId = user.Teacher.TeacherId,
+                    EmployeeNumber = user.Teacher.EmployeeNumber,
+                    Department = user.Teacher.Department
+                }
+            };
+
+            return Ok(response);
         }
 
-        var domain = payload.Email.Split('@').Last();
-        var domainAuthorized = await _context.AuthorizedEmailDomains
-            .AnyAsync(d => d.Domain == domain && d.IsActive);
-
-        if (!domainAuthorized)
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<ActionResult<UserProfileDto>> Me()
         {
-            return StatusCode(403, new LoginResponseDto
+            var userIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+            if (userIdClaim is null || !int.TryParse(userIdClaim.Value, out var userId))
+                return Unauthorized();
+
+            var user = await _userManager.Users
+                .FirstOrDefaultAsync(u => u.Id == userId && u.Status == "Active");
+
+            if (user is null) return Unauthorized();
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return Ok(new UserProfileDto
             {
-                Success = false,
-                Message = "This email domain is not authorized for SEMS.",
-                ErrorCode = "DOMAIN_NOT_AUTHORIZED"
-            });
-        }
-
-        var user = await _context.Users
-            .Include(u => u.Role)
-            .Include(u => u.Student)
-            .Include(u => u.Teacher)
-            .FirstOrDefaultAsync(u => u.GoogleSubjectId == payload.Subject);
-
-        if (user is null)
-        {
-            return StatusCode(403, new LoginResponseDto
-            {
-                Success = false,
-                Message = "This Google account is not registered in SEMS.",
-                ErrorCode = "USER_NOT_REGISTERED"
-            });
-        }
-
-        if (user.Status != "Active")
-        {
-            return StatusCode(403, new LoginResponseDto
-            {
-                Success = false,
-                Message = "This account is disabled.",
-                ErrorCode = "ACCOUNT_DISABLED"
-            });
-        }
-
-        user.LastLoginAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-
-        var response = new LoginResponseDto
-        {
-            Success = true,
-            Message = "Login successful.",
-            Token = _jwtService.GenerateToken(user),
-            User = new UserProfileDto
-            {
-                UserId = user.UserId,
-                Email = user.Email,
+                UserId = user.Id,
+                Email = user.Email ?? string.Empty,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                Role = user.Role.Name
-            },
-            Student = user.Student is null ? null : new StudentDto
-            {
-                StudentId = user.Student.StudentId,
-                StudentNumber = user.Student.StudentNumber,
-                GradeLevel = user.Student.GradeLevel,
-                Section = user.Student.Section
-            },
-            Teacher = user.Teacher is null ? null : new TeacherDto
-            {
-                TeacherId = user.Teacher.TeacherId,
-                EmployeeNumber = user.Teacher.EmployeeNumber,
-                Department = user.Teacher.Department
-            }
-        };
-
-        return Ok(response);
-    }
-
-    [Authorize]
-    [HttpGet("me")]
-    public async Task<ActionResult<UserProfileDto>> Me()
-    {
-        var userIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
-        if (userIdClaim is null || !int.TryParse(userIdClaim.Value, out var userId))
-            return Unauthorized();
-
-        var user = await _context.Users
-            .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.UserId == userId && u.Status == "Active");
-
-        if (user is null) return Unauthorized();
-
-        return Ok(new UserProfileDto
-        {
-            UserId = user.UserId,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Role = user.Role.Name
-        });
+                Role = roles.FirstOrDefault() ?? "Unknown"
+            });
+        }
     }
 }
