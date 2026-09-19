@@ -6,13 +6,15 @@ using SemsApi.Models.Eval;
 
 namespace SemsApi.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<User, Role, int>
+    public class ApplicationDbContext : DbContext
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options) { }
+        : base(options) { }
 
+        public DbSet<User> Users => Set<User>();
         public DbSet<Student> Students => Set<Student>();
         public DbSet<Teacher> Teachers => Set<Teacher>();
+        public DbSet<Role> Roles => Set<Role>();
         public DbSet<AuthorizedEmailDomain> AuthorizedEmailDomains => Set<AuthorizedEmailDomain>();
 
         // Evaluation
@@ -24,40 +26,51 @@ namespace SemsApi.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder); // Important for Identity tables
+            // ---- Role ----
+            modelBuilder.Entity<Role>(e =>
+            {
+                e.HasKey(r => r.RoleId);
+                e.Property(r => r.Name).IsRequired().HasMaxLength(50);
+                e.HasIndex(r => r.Name).IsUnique();
+            });
 
-            // ===== User (IdentityUser) =====
+            // ---- User ----
             modelBuilder.Entity<User>(e =>
             {
+                e.HasKey(u => u.UserId);
+
                 e.Property(u => u.GoogleSubjectId).IsRequired().HasMaxLength(255);
                 e.HasIndex(u => u.GoogleSubjectId).IsUnique();
+
+                e.Property(u => u.Email).IsRequired().HasMaxLength(256);
+                e.HasIndex(u => u.Email).IsUnique();
 
                 e.Property(u => u.FirstName).IsRequired().HasMaxLength(100);
                 e.Property(u => u.MiddleName).HasMaxLength(100);
                 e.Property(u => u.LastName).IsRequired().HasMaxLength(100);
                 e.Property(u => u.Status).IsRequired().HasMaxLength(20);
 
-                // Map Email from IdentityUser
-                e.Property(u => u.Email).HasMaxLength(256);
+                // One-to-many: Role -> User (Restrict: don't let a Role delete cascade into Users)
+                e.HasOne(u => u.Role)
+                    .WithMany(r => r.Users)
+                    .HasForeignKey(u => u.RoleId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // ===== Role (IdentityRole) =====
-            modelBuilder.Entity<Role>(e =>
-            {
-                e.Property(r => r.Name).HasMaxLength(50);
-            });
-
-            // ===== Student =====
+            // ---- Student (optional 1:1 with User) ----
             modelBuilder.Entity<Student>(e =>
             {
                 e.HasKey(s => s.StudentId);
+
                 e.Property(s => s.StudentNumber).IsRequired().HasMaxLength(30);
                 e.HasIndex(s => s.StudentNumber).IsUnique();
+
                 e.Property(s => s.GradeLevel).IsRequired().HasMaxLength(20);
                 e.Property(s => s.Section).IsRequired().HasMaxLength(50);
                 e.Property(s => s.SchoolYear).IsRequired().HasMaxLength(20);
                 e.Property(s => s.Status).IsRequired().HasMaxLength(20);
 
+                // Unique FK => optional one-to-one
                 e.HasIndex(s => s.UserId).IsUnique();
 
                 e.HasOne(s => s.User)
@@ -66,12 +79,14 @@ namespace SemsApi.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // ===== Teacher =====
+            // ---- Teacher (optional 1:1 with User) ----
             modelBuilder.Entity<Teacher>(e =>
             {
                 e.HasKey(t => t.TeacherId);
+
                 e.Property(t => t.EmployeeNumber).IsRequired().HasMaxLength(30);
                 e.HasIndex(t => t.EmployeeNumber).IsUnique();
+
                 e.Property(t => t.Department).IsRequired().HasMaxLength(100);
                 e.Property(t => t.Status).IsRequired().HasMaxLength(20);
 
@@ -83,7 +98,7 @@ namespace SemsApi.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // ===== AuthorizedEmailDomain =====
+            // ---- AuthorizedEmailDomain ----
             modelBuilder.Entity<AuthorizedEmailDomain>(e =>
             {
                 e.HasKey(d => d.DomainId);
@@ -92,62 +107,11 @@ namespace SemsApi.Data
                 e.Property(d => d.InstitutionName).IsRequired().HasMaxLength(150);
             });
 
-            // ===== Evaluation Tables =====
-            modelBuilder.Entity<TeacherEvaluationCategory>(e =>
-            {
-                e.ToTable("TeacherEvaluationCategory", "Eval");
-                e.HasKey(x => x.Recno);
-                e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.EvalType).HasMaxLength(50);
-                e.Property(x => x.CatRn).HasMaxLength(10);
-                e.Property(x => x.CatName).HasMaxLength(150);
-                e.Property(x => x.CatRate).HasColumnType("decimal(18,2)");
-            });
-
-            modelBuilder.Entity<TeacherEvaluationResult>(e =>
-            {
-                e.ToTable("TeacherEvaluationResult", "Eval");
-                e.HasKey(x => x.Recno);
-                e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.EvalType).HasMaxLength(50);
-                e.Property(x => x.QnName).HasColumnType("nvarchar(max)");
-            });
-
-            modelBuilder.Entity<GuidanceEvaluationResult>(e =>
-            {
-                e.ToTable("GuidanceEvaluationResult", "Eval");
-                e.HasKey(x => x.Recno);
-                e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.StudentId).HasMaxLength(50);
-                e.Property(x => x.Sy).HasMaxLength(9);
-            });
-
-            modelBuilder.Entity<GuidanceEvaluationLog>(e =>
-            {
-                e.ToTable("GuidanceEvaluationLog", "Eval");
-                e.HasKey(x => x.Recno);
-                e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.StudentId).HasMaxLength(10);
-                e.Property(x => x.Sy).HasMaxLength(9);
-            });
-
-            modelBuilder.Entity<TeacherEvaluationStrength>(e =>
-            {
-                e.ToTable("TeacherEvaluationStrength", "Eval");
-                e.HasKey(x => x.Recno);
-                e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.EvalType).HasMaxLength(50);
-                e.Property(x => x.TeacherId).HasMaxLength(50);
-                e.Property(x => x.StudentId).HasMaxLength(50);
-                e.Property(x => x.Sy).HasMaxLength(50);
-                e.Property(x => x.CommentName).HasColumnType("nvarchar(max)");
-            });
-
-            // ===== Seed Roles =====
+            // ---- Seed data (Roles + sample domain) ----
             modelBuilder.Entity<Role>().HasData(
-                new Role { Id = 1, Name = "Admin", NormalizedName = "ADMIN" },
-                new Role { Id = 2, Name = "Teacher", NormalizedName = "TEACHER" },
-                new Role { Id = 3, Name = "Student", NormalizedName = "STUDENT" }
+                new Role { RoleId = 1, Name = "Admin" },
+                new Role { RoleId = 2, Name = "Teacher" },
+                new Role { RoleId = 3, Name = "Student" }
             );
 
             // ===== Seed Authorized Domain =====
@@ -198,5 +162,6 @@ namespace SemsApi.Data
                 new TeacherEvaluationResult { Recno = 20, EvalType = "Teacher Evaluation", CatNo = 5, QnNo = 4, QnName = "The teacher recognizes and praises student effort and achievement." }
             );
         }
+
     }
 }
