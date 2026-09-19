@@ -2,10 +2,26 @@
 
 namespace SemsApi.Models
 {
-    public class Role : IdentityRole<int> //Inherits from IdentityRole with int as the primary key type
+    public class Role : IdentityRole<int>
     {
-        public int RoleId { get; set; }
-        public string Name { get; set; } = string.Empty; //"Admin" , "Teacher" , "Student"
-        public ICollection<User> Users { get; set; } = new List<User>();
+        /// <summary>
+        /// Friendly description of the role (e.g. "System Administrator", "Classroom Teacher")
+        /// </summary>
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// Whether this role is currently active and can be assigned
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// When the role was created
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Optional display order for UI sorting
+        /// </summary>
+        public int SortOrder { get; set; } = 0;
     }
 }
