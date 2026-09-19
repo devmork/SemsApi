@@ -113,6 +113,5 @@ app.UseHttpsRedirection();
 app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseOutputCache();
 app.MapControllers();
 app.Run();
