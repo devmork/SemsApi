@@ -56,28 +56,6 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get categories only
-        /// </summary>
-        [HttpGet("categories")]
-        public async Task<ActionResult> GetCategories(
-            [FromQuery] string evalType = "Teacher Evaluation")
-        {
-            var data = await _context.TeacherEvaluationCategories
-                .Where(c => c.EvalType == evalType)
-                .OrderBy(c => c.CatNo)
-                .Select(c => new
-                {
-                    c.CatNo,
-                    c.CatRn,
-                    c.CatName,
-                    c.CatRate
-                })
-                .ToListAsync();
-
-            return Ok(data);
-        }
-
-        /// <summary>
         /// Get questions (optionally filtered by category)
         /// </summary>
         [HttpGet("questions")]
