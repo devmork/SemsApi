@@ -652,6 +652,38 @@ namespace SemsApi.Migrations
                         .IsUnique();
 
                     b.ToTable("Students");
+
+                    b.HasData(
+                        new
+                        {
+                            StudentId = 1,
+                            GradeLevel = "Grade 6",
+                            SchoolYear = "2025-2026",
+                            Section = "GRACE",
+                            Status = "Active",
+                            StudentNumber = "2020-0331",
+                            UserId = 1
+                        },
+                        new
+                        {
+                            StudentId = 2,
+                            GradeLevel = "Grade 7",
+                            SchoolYear = "2025-2026",
+                            Section = "St. Solomon Leclerq",
+                            Status = "Active",
+                            StudentNumber = "2025-2219",
+                            UserId = 2
+                        },
+                        new
+                        {
+                            StudentId = 3,
+                            GradeLevel = "Kindergarten",
+                            SchoolYear = "2025-2026",
+                            Section = "KINDERGARTEN",
+                            Status = "Active",
+                            StudentNumber = "2025-2235",
+                            UserId = 3
+                        });
                 });
 
             modelBuilder.Entity("SemsApi.Models.Teacher", b =>
@@ -793,6 +825,68 @@ namespace SemsApi.Migrations
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AccessFailedCount = 0,
+                            ConcurrencyStamp = "92ac3653-5441-40f5-bb9a-cc1ed15f9fb9",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Email = "jelah.cuevas@dmc.edu.ph",
+                            EmailConfirmed = true,
+                            FirstName = "Jelah",
+                            GoogleSubjectId = "test-google-sub-001",
+                            LastName = "Cuevas",
+                            LockoutEnabled = false,
+                            NormalizedEmail = "JELAH.CUEVAS@DMC.EDU.PH",
+                            NormalizedUserName = "JELAH.CUEVAS@DMC.EDU.PH",
+                            PhoneNumberConfirmed = false,
+                            Status = "Active",
+                            TwoFactorEnabled = false,
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UserName = "jelah.cuevas@dmc.edu.ph"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            AccessFailedCount = 0,
+                            ConcurrencyStamp = "861e13a6-b684-49c8-a2ab-25c476f3f0cd",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Email = "shevonn.salasala@dmc.edu.ph",
+                            EmailConfirmed = true,
+                            FirstName = "Shevonn",
+                            GoogleSubjectId = "test-google-sub-002",
+                            LastName = "Salasala",
+                            LockoutEnabled = false,
+                            NormalizedEmail = "SHEVONN.SALASALA@DMC.EDU.PH",
+                            NormalizedUserName = "SHEVONN.SALASALA@DMC.EDU.PH",
+                            PhoneNumberConfirmed = false,
+                            Status = "Active",
+                            TwoFactorEnabled = false,
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UserName = "shevonn.salasala@dmc.edu.ph"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            AccessFailedCount = 0,
+                            ConcurrencyStamp = "1b5e1ea9-de26-428f-8af8-b1f8020d813c",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Email = "chaser.gone@dmc.edu.ph",
+                            EmailConfirmed = true,
+                            FirstName = "Chaser",
+                            GoogleSubjectId = "test-google-sub-003",
+                            LastName = "Gone",
+                            LockoutEnabled = false,
+                            NormalizedEmail = "CHASER.GONE@DMC.EDU.PH",
+                            NormalizedUserName = "CHASER.GONE@DMC.EDU.PH",
+                            PhoneNumberConfirmed = false,
+                            Status = "Active",
+                            TwoFactorEnabled = false,
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UserName = "chaser.gone@dmc.edu.ph"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
