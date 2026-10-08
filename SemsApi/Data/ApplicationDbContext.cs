@@ -306,6 +306,93 @@ namespace SemsApi.Data
                 new TeacherEvaluationResult { Recno = 19, EvalType = "Teacher Evaluation", CatNo = 5, QnNo = 3, QnName = "The teacher uses varied activities to sustain student interest." },
                 new TeacherEvaluationResult { Recno = 20, EvalType = "Teacher Evaluation", CatNo = 5, QnNo = 4, QnName = "The teacher recognizes and praises student effort and achievement." }
             );
+
+            // =====================================================
+            // TEST USERS + STUDENTS (from legacy DMCCFI data)
+            // =====================================================
+
+            // 1. Create 3 simple test users
+            modelBuilder.Entity<User>().HasData(
+                new User
+                {
+                    Id = 1,
+                    UserName = "jelah.cuevas@dmc.edu.ph",
+                    NormalizedUserName = "JELAH.CUEVAS@DMC.EDU.PH",
+                    Email = "jelah.cuevas@dmc.edu.ph",
+                    NormalizedEmail = "JELAH.CUEVAS@DMC.EDU.PH",
+                    EmailConfirmed = true,
+                    GoogleSubjectId = "test-google-sub-001",
+                    FirstName = "Jelah",
+                    LastName = "Cuevas",
+                    Status = "Active",
+                    CreatedAt = new DateTime(2026, 1, 1),
+                    UpdatedAt = new DateTime(2026, 1, 1)
+                },
+                new User
+                {
+                    Id = 2,
+                    UserName = "shevonn.salasala@dmc.edu.ph",
+                    NormalizedUserName = "SHEVONN.SALASALA@DMC.EDU.PH",
+                    Email = "shevonn.salasala@dmc.edu.ph",
+                    NormalizedEmail = "SHEVONN.SALASALA@DMC.EDU.PH",
+                    EmailConfirmed = true,
+                    GoogleSubjectId = "test-google-sub-002",
+                    FirstName = "Shevonn",
+                    LastName = "Salasala",
+                    Status = "Active",
+                    CreatedAt = new DateTime(2026, 1, 1),
+                    UpdatedAt = new DateTime(2026, 1, 1)
+                },
+                new User
+                {
+                    Id = 3,
+                    UserName = "chaser.gone@dmc.edu.ph",
+                    NormalizedUserName = "CHASER.GONE@DMC.EDU.PH",
+                    Email = "chaser.gone@dmc.edu.ph",
+                    NormalizedEmail = "CHASER.GONE@DMC.EDU.PH",
+                    EmailConfirmed = true,
+                    GoogleSubjectId = "test-google-sub-003",
+                    FirstName = "Chaser",
+                    LastName = "Gone",
+                    Status = "Active",
+                    CreatedAt = new DateTime(2026, 1, 1),
+                    UpdatedAt = new DateTime(2026, 1, 1)
+                }
+            );
+
+            // 2. Link them to Student records (using the real student numbers from the old SQL)
+            modelBuilder.Entity<Student>().HasData(
+                new Student
+                {
+                    StudentId = 1,
+                    UserId = 1,
+                    StudentNumber = "2020-0331",          // from old SQL
+                    GradeLevel = "Grade 6",
+                    Section = "GRACE",
+                    SchoolYear = "2025-2026",
+                    Status = "Active"
+                },
+                new Student
+                {
+                    StudentId = 2,
+                    UserId = 2,
+                    StudentNumber = "2025-2219",          // from old SQL
+                    GradeLevel = "Grade 7",
+                    Section = "St. Solomon Leclerq",
+                    SchoolYear = "2025-2026",
+                    Status = "Active"
+                },
+                new Student
+                {
+                    StudentId = 3,
+                    UserId = 3,
+                    StudentNumber = "2025-2235",          // from old SQL
+                    GradeLevel = "Kindergarten",
+                    Section = "KINDERGARTEN",
+                    SchoolYear = "2025-2026",
+                    Status = "Active"
+                }
+            );
         }
     }
 }
