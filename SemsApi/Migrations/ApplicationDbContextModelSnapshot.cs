@@ -167,6 +167,80 @@ namespace SemsApi.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
+                {
+                    b.Property<int>("FormId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FormId"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("GradeBand")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("FormId");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("EvaluationForm", "Eval");
+
+                    b.HasData(
+                        new
+                        {
+                            FormId = 1,
+                            Code = "PRE-G3",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            GradeBand = "Preschool-G3",
+                            IsActive = true,
+                            Name = "Preschool - Grade 3 Teacher Evaluation",
+                            TargetType = "SubjectTeacher"
+                        },
+                        new
+                        {
+                            FormId = 2,
+                            Code = "G4-G6",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            GradeBand = "G4-G6",
+                            IsActive = true,
+                            Name = "Grades 4 - 6 Teacher Evaluation",
+                            TargetType = "SubjectTeacher"
+                        },
+                        new
+                        {
+                            FormId = 3,
+                            Code = "JHS-SHS",
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            GradeBand = "JHS-SHS",
+                            IsActive = true,
+                            Name = "Junior High & Senior High Teacher Evaluation",
+                            TargetType = "SubjectTeacher"
+                        });
+                });
+
             modelBuilder.Entity("SemsApi.Models.Eval.GuidanceEvaluationLog", b =>
                 {
                     b.Property<int>("Recno")
@@ -253,7 +327,12 @@ namespace SemsApi.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int>("FormId")
+                        .HasColumnType("int");
+
                     b.HasKey("Recno");
+
+                    b.HasIndex("FormId");
 
                     b.ToTable("TeacherEvaluationCategory", "Eval");
 
@@ -265,7 +344,8 @@ namespace SemsApi.Migrations
                             CatNo = 1,
                             CatRate = 25.00m,
                             CatRn = "A",
-                            EvalType = "Teacher Evaluation"
+                            EvalType = "Teacher Evaluation",
+                            FormId = 0
                         },
                         new
                         {
@@ -274,7 +354,8 @@ namespace SemsApi.Migrations
                             CatNo = 2,
                             CatRate = 20.00m,
                             CatRn = "B",
-                            EvalType = "Teacher Evaluation"
+                            EvalType = "Teacher Evaluation",
+                            FormId = 0
                         },
                         new
                         {
@@ -283,7 +364,8 @@ namespace SemsApi.Migrations
                             CatNo = 3,
                             CatRate = 20.00m,
                             CatRn = "C",
-                            EvalType = "Teacher Evaluation"
+                            EvalType = "Teacher Evaluation",
+                            FormId = 0
                         },
                         new
                         {
@@ -292,7 +374,8 @@ namespace SemsApi.Migrations
                             CatNo = 4,
                             CatRate = 20.00m,
                             CatRn = "D",
-                            EvalType = "Teacher Evaluation"
+                            EvalType = "Teacher Evaluation",
+                            FormId = 0
                         },
                         new
                         {
@@ -301,7 +384,8 @@ namespace SemsApi.Migrations
                             CatNo = 5,
                             CatRate = 15.00m,
                             CatRn = "E",
-                            EvalType = "Teacher Evaluation"
+                            EvalType = "Teacher Evaluation",
+                            FormId = 0
                         });
                 });
 
@@ -320,6 +404,9 @@ namespace SemsApi.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int>("FormId")
+                        .HasColumnType("int");
+
                     b.Property<string>("QnName")
                         .HasColumnType("nvarchar(max)");
 
@@ -327,6 +414,8 @@ namespace SemsApi.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Recno");
+
+                    b.HasIndex("FormId");
 
                     b.ToTable("TeacherEvaluationResult", "Eval");
 
@@ -336,6 +425,7 @@ namespace SemsApi.Migrations
                             Recno = 1,
                             CatNo = 1,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher explains lessons clearly and in an organized manner.",
                             QnNo = 1
                         },
@@ -344,6 +434,7 @@ namespace SemsApi.Migrations
                             Recno = 2,
                             CatNo = 1,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher uses appropriate examples and illustrations.",
                             QnNo = 2
                         },
@@ -352,6 +443,7 @@ namespace SemsApi.Migrations
                             Recno = 3,
                             CatNo = 1,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher adjusts teaching methods to different learning styles.",
                             QnNo = 3
                         },
@@ -360,6 +452,7 @@ namespace SemsApi.Migrations
                             Recno = 4,
                             CatNo = 1,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher provides timely and constructive feedback on student work.",
                             QnNo = 4
                         },
@@ -368,6 +461,7 @@ namespace SemsApi.Migrations
                             Recno = 5,
                             CatNo = 2,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher maintains an orderly and respectful classroom environment.",
                             QnNo = 1
                         },
@@ -376,6 +470,7 @@ namespace SemsApi.Migrations
                             Recno = 6,
                             CatNo = 2,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher manages time effectively during class periods.",
                             QnNo = 2
                         },
@@ -384,6 +479,7 @@ namespace SemsApi.Migrations
                             Recno = 7,
                             CatNo = 2,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher handles student misbehavior fairly and consistently.",
                             QnNo = 3
                         },
@@ -392,6 +488,7 @@ namespace SemsApi.Migrations
                             Recno = 8,
                             CatNo = 2,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "Classroom rules and expectations are clearly communicated.",
                             QnNo = 4
                         },
@@ -400,6 +497,7 @@ namespace SemsApi.Migrations
                             Recno = 9,
                             CatNo = 3,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher communicates expectations and instructions clearly.",
                             QnNo = 1
                         },
@@ -408,6 +506,7 @@ namespace SemsApi.Migrations
                             Recno = 10,
                             CatNo = 3,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher listens to and responds to student questions.",
                             QnNo = 2
                         },
@@ -416,6 +515,7 @@ namespace SemsApi.Migrations
                             Recno = 11,
                             CatNo = 3,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher uses language appropriate to the students' level.",
                             QnNo = 3
                         },
@@ -424,6 +524,7 @@ namespace SemsApi.Migrations
                             Recno = 12,
                             CatNo = 3,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher provides opportunities for students to express ideas.",
                             QnNo = 4
                         },
@@ -432,6 +533,7 @@ namespace SemsApi.Migrations
                             Recno = 13,
                             CatNo = 4,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher demonstrates thorough knowledge of the subject matter.",
                             QnNo = 1
                         },
@@ -440,6 +542,7 @@ namespace SemsApi.Migrations
                             Recno = 14,
                             CatNo = 4,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher relates the subject to real-life situations.",
                             QnNo = 2
                         },
@@ -448,6 +551,7 @@ namespace SemsApi.Migrations
                             Recno = 15,
                             CatNo = 4,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher stays updated with current developments in the field.",
                             QnNo = 3
                         },
@@ -456,6 +560,7 @@ namespace SemsApi.Migrations
                             Recno = 16,
                             CatNo = 4,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher answers content-related questions accurately.",
                             QnNo = 4
                         },
@@ -464,6 +569,7 @@ namespace SemsApi.Migrations
                             Recno = 17,
                             CatNo = 5,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher encourages active participation from all students.",
                             QnNo = 1
                         },
@@ -472,6 +578,7 @@ namespace SemsApi.Migrations
                             Recno = 18,
                             CatNo = 5,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher creates a motivating and supportive learning atmosphere.",
                             QnNo = 2
                         },
@@ -480,6 +587,7 @@ namespace SemsApi.Migrations
                             Recno = 19,
                             CatNo = 5,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher uses varied activities to sustain student interest.",
                             QnNo = 3
                         },
@@ -488,6 +596,7 @@ namespace SemsApi.Migrations
                             Recno = 20,
                             CatNo = 5,
                             EvalType = "Teacher Evaluation",
+                            FormId = 0,
                             QnName = "The teacher recognizes and praises student effort and achievement.",
                             QnNo = 4
                         });
@@ -831,7 +940,7 @@ namespace SemsApi.Migrations
                         {
                             Id = 1,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "92ac3653-5441-40f5-bb9a-cc1ed15f9fb9",
+                            ConcurrencyStamp = "3620af79-33cf-4dfb-ac87-0275584a49a0",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "jelah.cuevas@dmc.edu.ph",
                             EmailConfirmed = true,
@@ -851,7 +960,7 @@ namespace SemsApi.Migrations
                         {
                             Id = 2,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "861e13a6-b684-49c8-a2ab-25c476f3f0cd",
+                            ConcurrencyStamp = "5962d107-c7f6-4440-94d7-9beff54b7d21",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "shevonn.salasala@dmc.edu.ph",
                             EmailConfirmed = true,
@@ -871,7 +980,7 @@ namespace SemsApi.Migrations
                         {
                             Id = 3,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "1b5e1ea9-de26-428f-8af8-b1f8020d813c",
+                            ConcurrencyStamp = "51bdfc13-78d9-4d4f-b08e-044399e716f1",
                             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "chaser.gone@dmc.edu.ph",
                             EmailConfirmed = true,
@@ -940,6 +1049,28 @@ namespace SemsApi.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationCategory", b =>
+                {
+                    b.HasOne("SemsApi.Models.Eval.EvaluationForm", "Form")
+                        .WithMany("Categories")
+                        .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Form");
+                });
+
+            modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationResult", b =>
+                {
+                    b.HasOne("SemsApi.Models.Eval.EvaluationForm", "Form")
+                        .WithMany()
+                        .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Form");
+                });
+
             modelBuilder.Entity("SemsApi.Models.Student", b =>
                 {
                     b.HasOne("SemsApi.Models.User", "User")
@@ -960,6 +1091,11 @@ namespace SemsApi.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
+                {
+                    b.Navigation("Categories");
                 });
 
             modelBuilder.Entity("SemsApi.Models.User", b =>
