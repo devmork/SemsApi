@@ -20,18 +20,50 @@ namespace SemsApi.Controllers
 
         /// <summary>
         /// Get full evaluation form (Categories + Questions)
+        /// You can pass formCode (recommended) or the old evalType
+        /// Examples:
+        ///   /api/evaluation/form?formCode=PRE-G3
+        ///   /api/evaluation/form?formCode=G4-G6
+        ///   /api/evaluation/form?formCode=JHS-SHS
         /// </summary>
         [HttpGet("form")]
         public async Task<ActionResult<List<EvaluationCategoryDto>>> GetForm(
+            [FromQuery] string? formCode = null,
             [FromQuery] string evalType = "Teacher Evaluation")
         {
-            var categories = await _context.TeacherEvaluationCategories
-                .Where(c => c.EvalType == evalType)
+            int? formId = null;
+
+            if (!string.IsNullOrWhiteSpace(formCode))
+            {
+                formId = await _context.EvaluationForms
+                    .Where(f => f.Code == formCode && f.IsActive)
+                    .Select(f => (int?)f.FormId)
+                    .FirstOrDefaultAsync();
+
+                if (formId is null)
+                    return NotFound(new { message = $"Form with code '{formCode}' not found." });
+            }
+
+            var categoriesQuery = _context.TeacherEvaluationCategories.AsQueryable();
+            var questionsQuery = _context.TeacherEvaluationResults.AsQueryable();
+
+            if (formId.HasValue)
+            {
+                categoriesQuery = categoriesQuery.Where(c => c.FormId == formId.Value);
+                questionsQuery = questionsQuery.Where(q => q.FormId == formId.Value);
+            }
+            else
+            {
+                // Fallback to old behavior
+                categoriesQuery = categoriesQuery.Where(c => c.EvalType == evalType);
+                questionsQuery = questionsQuery.Where(q => q.EvalType == evalType);
+            }
+
+            var categories = await categoriesQuery
                 .OrderBy(c => c.CatNo)
                 .ToListAsync();
 
-            var questions = await _context.TeacherEvaluationResults
-                .Where(q => q.EvalType == evalType)
+            var questions = await questionsQuery
                 .OrderBy(q => q.CatNo)
                 .ThenBy(q => q.QnNo)
                 .ToListAsync();

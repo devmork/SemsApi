@@ -19,6 +19,7 @@ namespace SemsApi.Data
         public DbSet<AuthorizedEmailDomain> AuthorizedEmailDomains => Set<AuthorizedEmailDomain>();
 
         // Evaluation tables
+        public DbSet<EvaluationForm> EvaluationForms => Set<EvaluationForm>();
         public DbSet<TeacherEvaluationCategory> TeacherEvaluationCategories => Set<TeacherEvaluationCategory>();
         public DbSet<TeacherEvaluationResult> TeacherEvaluationResults => Set<TeacherEvaluationResult>();
         public DbSet<GuidanceEvaluationResult> GuidanceEvaluationResults => Set<GuidanceEvaluationResult>();
@@ -164,6 +165,20 @@ namespace SemsApi.Data
             // =====================================================
             // EVALUATION TABLES (Schema: Eval)
             // =====================================================
+            // =====================================================
+            // EVALUATION FORM
+            // =====================================================
+            modelBuilder.Entity<EvaluationForm>(e =>
+            {
+                e.ToTable("EvaluationForm", "Eval");
+                e.HasKey(x => x.FormId);
+                e.Property(x => x.FormId).ValueGeneratedOnAdd();
+                e.Property(x => x.Name).IsRequired().HasMaxLength(150);
+                e.Property(x => x.Code).IsRequired().HasMaxLength(20);
+                e.Property(x => x.GradeBand).IsRequired().HasMaxLength(30);
+                e.Property(x => x.TargetType).IsRequired().HasMaxLength(30);
+                e.HasIndex(x => x.Code).IsUnique();
+            });
 
             modelBuilder.Entity<TeacherEvaluationCategory>(e =>
             {
@@ -174,6 +189,12 @@ namespace SemsApi.Data
                 e.Property(x => x.CatRn).HasMaxLength(10);
                 e.Property(x => x.CatName).HasMaxLength(150);
                 e.Property(x => x.CatRate).HasColumnType("decimal(18,2)");
+
+                // New relationship
+                e.HasOne(x => x.Form)
+                 .WithMany(f => f.Categories)
+                 .HasForeignKey(x => x.FormId)
+                 .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<TeacherEvaluationResult>(e =>
@@ -183,6 +204,12 @@ namespace SemsApi.Data
                 e.Property(x => x.Recno).ValueGeneratedOnAdd();
                 e.Property(x => x.EvalType).HasMaxLength(50);
                 e.Property(x => x.QnName).HasColumnType("nvarchar(max)");
+
+                // New relationship
+                e.HasOne(x => x.Form)
+                 .WithMany()
+                 .HasForeignKey(x => x.FormId)
+                 .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<GuidanceEvaluationResult>(e =>
@@ -305,6 +332,40 @@ namespace SemsApi.Data
                 new TeacherEvaluationResult { Recno = 18, EvalType = "Teacher Evaluation", CatNo = 5, QnNo = 2, QnName = "The teacher creates a motivating and supportive learning atmosphere." },
                 new TeacherEvaluationResult { Recno = 19, EvalType = "Teacher Evaluation", CatNo = 5, QnNo = 3, QnName = "The teacher uses varied activities to sustain student interest." },
                 new TeacherEvaluationResult { Recno = 20, EvalType = "Teacher Evaluation", CatNo = 5, QnNo = 4, QnName = "The teacher recognizes and praises student effort and achievement." }
+            );
+
+            // Evaluation Forms
+            modelBuilder.Entity<EvaluationForm>().HasData(
+                new EvaluationForm
+                {
+                    FormId = 1,
+                    Name = "Preschool - Grade 3 Teacher Evaluation",
+                    Code = "PRE-G3",
+                    GradeBand = "Preschool-G3",
+                    TargetType = "SubjectTeacher",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                },
+                new EvaluationForm
+                {
+                    FormId = 2,
+                    Name = "Grades 4 - 6 Teacher Evaluation",
+                    Code = "G4-G6",
+                    GradeBand = "G4-G6",
+                    TargetType = "SubjectTeacher",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                },
+                new EvaluationForm
+                {
+                    FormId = 3,
+                    Name = "Junior High & Senior High Teacher Evaluation",
+                    Code = "JHS-SHS",
+                    GradeBand = "JHS-SHS",
+                    TargetType = "SubjectTeacher",
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 1, 1)
+                }
             );
 
             // =====================================================
