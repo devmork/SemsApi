@@ -65,7 +65,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -87,7 +88,6 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Enter: Bearer {your JWT token}"
     });
 
-    // New signature – takes a Func that receives the document
     options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
         [new OpenApiSecuritySchemeReference("Bearer", document)] = []
@@ -95,8 +95,6 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
-
-
 
 var app = builder.Build();
 
