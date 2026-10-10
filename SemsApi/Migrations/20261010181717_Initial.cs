@@ -3,12 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-
 namespace SemsApi.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialIdentityAndEvaluation : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -86,6 +84,25 @@ namespace SemsApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "EvaluationForm",
+                schema: "Eval",
+                columns: table => new
+                {
+                    FormId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    Code = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    GradeBand = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    TargetType = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EvaluationForm", x => x.FormId);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "GuidanceEvaluationLog",
                 schema: "Eval",
                 columns: table => new
@@ -119,41 +136,6 @@ namespace SemsApi.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_GuidanceEvaluationResult", x => x.Recno);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "TeacherEvaluationCategory",
-                schema: "Eval",
-                columns: table => new
-                {
-                    Recno = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    EvalType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    CatNo = table.Column<int>(type: "int", nullable: true),
-                    CatRn = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
-                    CatName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: true),
-                    CatRate = table.Column<decimal>(type: "decimal(18,2)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_TeacherEvaluationCategory", x => x.Recno);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "TeacherEvaluationResult",
-                schema: "Eval",
-                columns: table => new
-                {
-                    Recno = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    EvalType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    CatNo = table.Column<int>(type: "int", nullable: true),
-                    QnNo = table.Column<int>(type: "int", nullable: true),
-                    QnName = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_TeacherEvaluationResult", x => x.Recno);
                 });
 
             migrationBuilder.CreateTable(
@@ -327,60 +309,55 @@ namespace SemsApi.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.InsertData(
-                table: "AspNetRoles",
-                columns: new[] { "Id", "ConcurrencyStamp", "CreatedAt", "Description", "IsActive", "Name", "NormalizedName", "SortOrder" },
-                values: new object[,]
+            migrationBuilder.CreateTable(
+                name: "TeacherEvaluationCategory",
+                schema: "Eval",
+                columns: table => new
                 {
-                    { 1, null, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "System Administrator", true, "Admin", "ADMIN", 1 },
-                    { 2, null, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Classroom Teacher", true, "Teacher", "TEACHER", 2 },
-                    { 3, null, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Student", true, "Student", "STUDENT", 3 }
+                    Recno = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FormId = table.Column<int>(type: "int", nullable: false),
+                    EvalType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CatNo = table.Column<int>(type: "int", nullable: true),
+                    CatRn = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    CatName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: true),
+                    CatRate = table.Column<decimal>(type: "decimal(18,2)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TeacherEvaluationCategory", x => x.Recno);
+                    table.ForeignKey(
+                        name: "FK_TeacherEvaluationCategory_EvaluationForm_FormId",
+                        column: x => x.FormId,
+                        principalSchema: "Eval",
+                        principalTable: "EvaluationForm",
+                        principalColumn: "FormId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
-            migrationBuilder.InsertData(
-                table: "AuthorizedEmailDomains",
-                columns: new[] { "DomainId", "CreatedAt", "Domain", "InstitutionName", "IsActive" },
-                values: new object[] { 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "dmc.edu.ph", "DMC College Foundation, Inc.", true });
-
-            migrationBuilder.InsertData(
+            migrationBuilder.CreateTable(
+                name: "TeacherEvaluationResult",
                 schema: "Eval",
-                table: "TeacherEvaluationCategory",
-                columns: new[] { "Recno", "CatName", "CatNo", "CatRate", "CatRn", "EvalType" },
-                values: new object[,]
+                columns: table => new
                 {
-                    { 1, "Teaching Effectiveness", 1, 25.00m, "A", "Teacher Evaluation" },
-                    { 2, "Classroom Management", 2, 20.00m, "B", "Teacher Evaluation" },
-                    { 3, "Communication Skills", 3, 20.00m, "C", "Teacher Evaluation" },
-                    { 4, "Subject Knowledge", 4, 20.00m, "D", "Teacher Evaluation" },
-                    { 5, "Student Engagement", 5, 15.00m, "E", "Teacher Evaluation" }
-                });
-
-            migrationBuilder.InsertData(
-                schema: "Eval",
-                table: "TeacherEvaluationResult",
-                columns: new[] { "Recno", "CatNo", "EvalType", "QnName", "QnNo" },
-                values: new object[,]
+                    Recno = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FormId = table.Column<int>(type: "int", nullable: false),
+                    EvalType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CatNo = table.Column<int>(type: "int", nullable: true),
+                    QnNo = table.Column<int>(type: "int", nullable: true),
+                    QnName = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
                 {
-                    { 1, 1, "Teacher Evaluation", "The teacher explains lessons clearly and in an organized manner.", 1 },
-                    { 2, 1, "Teacher Evaluation", "The teacher uses appropriate examples and illustrations.", 2 },
-                    { 3, 1, "Teacher Evaluation", "The teacher adjusts teaching methods to different learning styles.", 3 },
-                    { 4, 1, "Teacher Evaluation", "The teacher provides timely and constructive feedback on student work.", 4 },
-                    { 5, 2, "Teacher Evaluation", "The teacher maintains an orderly and respectful classroom environment.", 1 },
-                    { 6, 2, "Teacher Evaluation", "The teacher manages time effectively during class periods.", 2 },
-                    { 7, 2, "Teacher Evaluation", "The teacher handles student misbehavior fairly and consistently.", 3 },
-                    { 8, 2, "Teacher Evaluation", "Classroom rules and expectations are clearly communicated.", 4 },
-                    { 9, 3, "Teacher Evaluation", "The teacher communicates expectations and instructions clearly.", 1 },
-                    { 10, 3, "Teacher Evaluation", "The teacher listens to and responds to student questions.", 2 },
-                    { 11, 3, "Teacher Evaluation", "The teacher uses language appropriate to the students' level.", 3 },
-                    { 12, 3, "Teacher Evaluation", "The teacher provides opportunities for students to express ideas.", 4 },
-                    { 13, 4, "Teacher Evaluation", "The teacher demonstrates thorough knowledge of the subject matter.", 1 },
-                    { 14, 4, "Teacher Evaluation", "The teacher relates the subject to real-life situations.", 2 },
-                    { 15, 4, "Teacher Evaluation", "The teacher stays updated with current developments in the field.", 3 },
-                    { 16, 4, "Teacher Evaluation", "The teacher answers content-related questions accurately.", 4 },
-                    { 17, 5, "Teacher Evaluation", "The teacher encourages active participation from all students.", 1 },
-                    { 18, 5, "Teacher Evaluation", "The teacher creates a motivating and supportive learning atmosphere.", 2 },
-                    { 19, 5, "Teacher Evaluation", "The teacher uses varied activities to sustain student interest.", 3 },
-                    { 20, 5, "Teacher Evaluation", "The teacher recognizes and praises student effort and achievement.", 4 }
+                    table.PrimaryKey("PK_TeacherEvaluationResult", x => x.Recno);
+                    table.ForeignKey(
+                        name: "FK_TeacherEvaluationResult_EvaluationForm_FormId",
+                        column: x => x.FormId,
+                        principalSchema: "Eval",
+                        principalTable: "EvaluationForm",
+                        principalColumn: "FormId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
@@ -435,6 +412,13 @@ namespace SemsApi.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_EvaluationForm_Code",
+                schema: "Eval",
+                table: "EvaluationForm",
+                column: "Code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Students_StudentNumber",
                 table: "Students",
                 column: "StudentNumber",
@@ -445,6 +429,18 @@ namespace SemsApi.Migrations
                 table: "Students",
                 column: "UserId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherEvaluationCategory_FormId",
+                schema: "Eval",
+                table: "TeacherEvaluationCategory",
+                column: "FormId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TeacherEvaluationResult_FormId",
+                schema: "Eval",
+                table: "TeacherEvaluationResult",
+                column: "FormId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Teachers_EmployeeNumber",
@@ -508,6 +504,10 @@ namespace SemsApi.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
+
+            migrationBuilder.DropTable(
+                name: "EvaluationForm",
+                schema: "Eval");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
