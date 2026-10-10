@@ -125,38 +125,6 @@ namespace SemsApi.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("SemsApi.Models.AuthorizedEmailDomain", b =>
-                {
-                    b.Property<int>("DomainId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DomainId"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Domain")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("InstitutionName")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.HasKey("DomainId");
-
-                    b.HasIndex("Domain")
-                        .IsUnique();
-
-                    b.ToTable("AuthorizedEmailDomains");
-                });
-
             modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
                 {
                     b.Property<int>("FormId")
