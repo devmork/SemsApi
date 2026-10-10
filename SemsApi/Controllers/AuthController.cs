@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using SemsApi.Configuration;
 using SemsApi.Data;
 using SemsApi.DTO;
 using SemsApi.Interfaces;
@@ -19,19 +21,22 @@ namespace SemsApi.Controllers
         private readonly RoleManager<Role> _roleManager;
         private readonly IGoogleAuthenticationService _googleAuth;
         private readonly IJwtService _jwtService;
+        private readonly AuthOptions _authOptions;
 
         public AuthController(
             ApplicationDbContext context,
             UserManager<User> userManager,
             RoleManager<Role> roleManager,
             IGoogleAuthenticationService googleAuth,
-            IJwtService jwtService)
+            IJwtService jwtService,
+            IOptions<AuthOptions> authOptions)
         {
             _context = context;
             _userManager = userManager;
             _roleManager = roleManager;
             _googleAuth = googleAuth;
             _jwtService = jwtService;
+            _authOptions = authOptions.Value;
         }
 
         /// <summary>
@@ -105,8 +110,8 @@ namespace SemsApi.Controllers
 
             // 2. Check authorized domain
             var domain = payload.Email.Split('@').Last().ToLower();
-            var domainAuthorized = await _context.AuthorizedEmailDomains
-                .AnyAsync(d => d.Domain == domain && d.IsActive);
+            var domainAuthorized = _authOptions.AuthorizedDomains
+                .Any(d => string.Equals(d, domain, StringComparison.OrdinalIgnoreCase));
 
             if (!domainAuthorized)
             {
@@ -256,6 +261,34 @@ namespace SemsApi.Controllers
                 LastName = user.LastName,
                 Role = roles.FirstOrDefault() ?? "Unknown"
             });
+        }
+
+        //[HttpPost("refresh")]
+        //public async Task<ActionResult<LoginResponseDto>> Refresh()
+        //{
+        //    var refreshToken = Request.Cookies["refresh_token"];
+        //    if (string.IsNullOrEmpty(refreshToken))
+        //        return Unauthorized(new { message = "No refresh token." });
+
+        //    // 1. Hash the token
+        //    // 2. Look up hash in DB/Redis
+        //    // 3. Check expiry and revocation
+        //    // 4. Rotate: revoke old, issue new refresh token, set new cookie
+        //    // 5. Return new access token
+        //}
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var refreshToken = Request.Cookies["refresh_token"];
+            Response.Cookies.Delete("refresh_token", new CookieOptions
+            {
+                Path = "/api/auth",
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax
+            });
+            return Ok();
         }
     }
 }
