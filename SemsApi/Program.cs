@@ -7,16 +7,19 @@ using SemsApi.Configuration;
 using SemsApi.Data;
 using SemsApi.Interfaces;
 using SemsApi.Models;
+using SemsApi.Seeders;
 using SemsApi.Services;
 using System.Text;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
            .ConfigureWarnings(w => w.Ignore(
                Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+
 // ===== Identity =====
 builder.Services.AddIdentity<User, Role>(options =>
 {
@@ -25,17 +28,17 @@ builder.Services.AddIdentity<User, Role>(options =>
     options.Password.RequireUppercase = false;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
-
     options.User.RequireUniqueEmail = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// Configuration
+// CONFIGURATION
 builder.Services.Configure<GoogleOptions>(builder.Configuration.GetSection("Google"));
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
 
-// Services
+// SERVICES
 builder.Services.AddScoped<IGoogleAuthenticationService, GoogleAuthenticationService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 
@@ -72,7 +75,6 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -97,6 +99,12 @@ builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
+    await RoleSeeder.SeedAsync(roleManager);
+}
 
 if (app.Environment.IsDevelopment())
 {
