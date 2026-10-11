@@ -1,4 +1,8 @@
-﻿namespace SemsApi.DTO
+﻿using SemsApi.DTO.Student;
+using SemsApi.DTO.Teacher;
+using SemsApi.DTO.User;
+
+namespace SemsApi.DTO.Auth
 {
     public class LoginResponseDto
     {
