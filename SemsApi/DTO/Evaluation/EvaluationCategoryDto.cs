@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO
+﻿namespace SemsApi.DTO.Evaluation
 {
     public class EvaluationCategoryDto //Purpose: Category + nested questions used by /form
     {
