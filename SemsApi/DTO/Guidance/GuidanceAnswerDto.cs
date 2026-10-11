@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO
+﻿namespace SemsApi.DTO.Guidance
 {
     public class GuidanceAnswerDto //Pupose: One answer inside the guidance submission
     {

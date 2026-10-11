@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO
+﻿namespace SemsApi.DTO.Evaluation
 {
     public class EvaluationFormRequestDto
     {

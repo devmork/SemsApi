@@ -12,8 +12,8 @@ using SemsApi.Data;
 namespace SemsApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261008074559_MakeFormIdRequired")]
-    partial class MakeFormIdRequired
+    [Migration("20261010181717_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -158,16 +158,6 @@ namespace SemsApi.Migrations
                         .IsUnique();
 
                     b.ToTable("AuthorizedEmailDomains");
-
-                    b.HasData(
-                        new
-                        {
-                            DomainId = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Domain = "dmc.edu.ph",
-                            InstitutionName = "DMC College Foundation, Inc.",
-                            IsActive = true
-                        });
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
@@ -210,38 +200,6 @@ namespace SemsApi.Migrations
                         .IsUnique();
 
                     b.ToTable("EvaluationForm", "Eval");
-
-                    b.HasData(
-                        new
-                        {
-                            FormId = 1,
-                            Code = "PRE-G3",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            GradeBand = "Preschool-G3",
-                            IsActive = true,
-                            Name = "Preschool - Grade 3 Teacher Evaluation",
-                            TargetType = "SubjectTeacher"
-                        },
-                        new
-                        {
-                            FormId = 2,
-                            Code = "G4-G6",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            GradeBand = "G4-G6",
-                            IsActive = true,
-                            Name = "Grades 4 - 6 Teacher Evaluation",
-                            TargetType = "SubjectTeacher"
-                        },
-                        new
-                        {
-                            FormId = 3,
-                            Code = "JHS-SHS",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            GradeBand = "JHS-SHS",
-                            IsActive = true,
-                            Name = "Junior High & Senior High Teacher Evaluation",
-                            TargetType = "SubjectTeacher"
-                        });
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.GuidanceEvaluationLog", b =>
@@ -338,58 +296,6 @@ namespace SemsApi.Migrations
                     b.HasIndex("FormId");
 
                     b.ToTable("TeacherEvaluationCategory", "Eval");
-
-                    b.HasData(
-                        new
-                        {
-                            Recno = 1,
-                            CatName = "Teaching Effectiveness",
-                            CatNo = 1,
-                            CatRate = 25.00m,
-                            CatRn = "A",
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0
-                        },
-                        new
-                        {
-                            Recno = 2,
-                            CatName = "Classroom Management",
-                            CatNo = 2,
-                            CatRate = 20.00m,
-                            CatRn = "B",
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0
-                        },
-                        new
-                        {
-                            Recno = 3,
-                            CatName = "Communication Skills",
-                            CatNo = 3,
-                            CatRate = 20.00m,
-                            CatRn = "C",
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0
-                        },
-                        new
-                        {
-                            Recno = 4,
-                            CatName = "Subject Knowledge",
-                            CatNo = 4,
-                            CatRate = 20.00m,
-                            CatRn = "D",
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0
-                        },
-                        new
-                        {
-                            Recno = 5,
-                            CatName = "Student Engagement",
-                            CatNo = 5,
-                            CatRate = 15.00m,
-                            CatRn = "E",
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0
-                        });
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationResult", b =>
@@ -421,188 +327,6 @@ namespace SemsApi.Migrations
                     b.HasIndex("FormId");
 
                     b.ToTable("TeacherEvaluationResult", "Eval");
-
-                    b.HasData(
-                        new
-                        {
-                            Recno = 1,
-                            CatNo = 1,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher explains lessons clearly and in an organized manner.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 2,
-                            CatNo = 1,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher uses appropriate examples and illustrations.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 3,
-                            CatNo = 1,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher adjusts teaching methods to different learning styles.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 4,
-                            CatNo = 1,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher provides timely and constructive feedback on student work.",
-                            QnNo = 4
-                        },
-                        new
-                        {
-                            Recno = 5,
-                            CatNo = 2,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher maintains an orderly and respectful classroom environment.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 6,
-                            CatNo = 2,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher manages time effectively during class periods.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 7,
-                            CatNo = 2,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher handles student misbehavior fairly and consistently.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 8,
-                            CatNo = 2,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "Classroom rules and expectations are clearly communicated.",
-                            QnNo = 4
-                        },
-                        new
-                        {
-                            Recno = 9,
-                            CatNo = 3,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher communicates expectations and instructions clearly.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 10,
-                            CatNo = 3,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher listens to and responds to student questions.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 11,
-                            CatNo = 3,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher uses language appropriate to the students' level.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 12,
-                            CatNo = 3,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher provides opportunities for students to express ideas.",
-                            QnNo = 4
-                        },
-                        new
-                        {
-                            Recno = 13,
-                            CatNo = 4,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher demonstrates thorough knowledge of the subject matter.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 14,
-                            CatNo = 4,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher relates the subject to real-life situations.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 15,
-                            CatNo = 4,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher stays updated with current developments in the field.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 16,
-                            CatNo = 4,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher answers content-related questions accurately.",
-                            QnNo = 4
-                        },
-                        new
-                        {
-                            Recno = 17,
-                            CatNo = 5,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher encourages active participation from all students.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 18,
-                            CatNo = 5,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher creates a motivating and supportive learning atmosphere.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 19,
-                            CatNo = 5,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher uses varied activities to sustain student interest.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 20,
-                            CatNo = 5,
-                            EvalType = "Teacher Evaluation",
-                            FormId = 0,
-                            QnName = "The teacher recognizes and praises student effort and achievement.",
-                            QnNo = 4
-                        });
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationStrength", b =>
@@ -685,38 +409,6 @@ namespace SemsApi.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Description = "System Administrator",
-                            IsActive = true,
-                            Name = "Admin",
-                            NormalizedName = "ADMIN",
-                            SortOrder = 1
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Description = "Classroom Teacher",
-                            IsActive = true,
-                            Name = "Teacher",
-                            NormalizedName = "TEACHER",
-                            SortOrder = 2
-                        },
-                        new
-                        {
-                            Id = 3,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Description = "Student",
-                            IsActive = true,
-                            Name = "Student",
-                            NormalizedName = "STUDENT",
-                            SortOrder = 3
-                        });
                 });
 
             modelBuilder.Entity("SemsApi.Models.Student", b =>
@@ -764,38 +456,6 @@ namespace SemsApi.Migrations
                         .IsUnique();
 
                     b.ToTable("Students");
-
-                    b.HasData(
-                        new
-                        {
-                            StudentId = 1,
-                            GradeLevel = "Grade 6",
-                            SchoolYear = "2025-2026",
-                            Section = "GRACE",
-                            Status = "Active",
-                            StudentNumber = "2020-0331",
-                            UserId = 1
-                        },
-                        new
-                        {
-                            StudentId = 2,
-                            GradeLevel = "Grade 7",
-                            SchoolYear = "2025-2026",
-                            Section = "St. Solomon Leclerq",
-                            Status = "Active",
-                            StudentNumber = "2025-2219",
-                            UserId = 2
-                        },
-                        new
-                        {
-                            StudentId = 3,
-                            GradeLevel = "Kindergarten",
-                            SchoolYear = "2025-2026",
-                            Section = "KINDERGARTEN",
-                            Status = "Active",
-                            StudentNumber = "2025-2235",
-                            UserId = 3
-                        });
                 });
 
             modelBuilder.Entity("SemsApi.Models.Teacher", b =>
@@ -937,68 +597,6 @@ namespace SemsApi.Migrations
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            AccessFailedCount = 0,
-                            ConcurrencyStamp = "3620af79-33cf-4dfb-ac87-0275584a49a0",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "jelah.cuevas@dmc.edu.ph",
-                            EmailConfirmed = true,
-                            FirstName = "Jelah",
-                            GoogleSubjectId = "test-google-sub-001",
-                            LastName = "Cuevas",
-                            LockoutEnabled = false,
-                            NormalizedEmail = "JELAH.CUEVAS@DMC.EDU.PH",
-                            NormalizedUserName = "JELAH.CUEVAS@DMC.EDU.PH",
-                            PhoneNumberConfirmed = false,
-                            Status = "Active",
-                            TwoFactorEnabled = false,
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            UserName = "jelah.cuevas@dmc.edu.ph"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            AccessFailedCount = 0,
-                            ConcurrencyStamp = "5962d107-c7f6-4440-94d7-9beff54b7d21",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "shevonn.salasala@dmc.edu.ph",
-                            EmailConfirmed = true,
-                            FirstName = "Shevonn",
-                            GoogleSubjectId = "test-google-sub-002",
-                            LastName = "Salasala",
-                            LockoutEnabled = false,
-                            NormalizedEmail = "SHEVONN.SALASALA@DMC.EDU.PH",
-                            NormalizedUserName = "SHEVONN.SALASALA@DMC.EDU.PH",
-                            PhoneNumberConfirmed = false,
-                            Status = "Active",
-                            TwoFactorEnabled = false,
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            UserName = "shevonn.salasala@dmc.edu.ph"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            AccessFailedCount = 0,
-                            ConcurrencyStamp = "51bdfc13-78d9-4d4f-b08e-044399e716f1",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "chaser.gone@dmc.edu.ph",
-                            EmailConfirmed = true,
-                            FirstName = "Chaser",
-                            GoogleSubjectId = "test-google-sub-003",
-                            LastName = "Gone",
-                            LockoutEnabled = false,
-                            NormalizedEmail = "CHASER.GONE@DMC.EDU.PH",
-                            NormalizedUserName = "CHASER.GONE@DMC.EDU.PH",
-                            PhoneNumberConfirmed = false,
-                            Status = "Active",
-                            TwoFactorEnabled = false,
-                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            UserName = "chaser.gone@dmc.edu.ph"
-                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>

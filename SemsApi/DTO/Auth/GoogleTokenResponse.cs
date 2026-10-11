@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace SemsApi.DTO
+namespace SemsApi.DTO.Auth
 {
     public class GoogleTokenResponse
     {
