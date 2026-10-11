@@ -2,7 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
-using SemsApi.DTO;
+using SemsApi.DTO.Evaluation;
+using SemsApi.DTO.Guidance;
 using SemsApi.Models.Eval;
 
 namespace SemsApi.Controllers
