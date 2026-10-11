@@ -16,27 +16,12 @@ namespace SemsApi.Controllers
             _authService = authService;
         }
 
-        /// <summary>
-        /// Google OAuth Callback (Authorization Code flow)
-        /// </summary>
         [HttpPost("google-callback")]
         public async Task<ActionResult<LoginResponseDto>> GoogleCallback([FromBody] GoogleCallbackRequest request)
         {
             return await _authService.GoogleCallbackAsync(request);
         }
 
-        /// <summary>
-        /// Google Login using ID Token (common for mobile / SPA)
-        /// </summary>
-        [HttpPost("google")]
-        public async Task<ActionResult<LoginResponseDto>> Google([FromBody] GoogleLoginRequest request)
-        {
-            return await _authService.GoogleLoginAsync(request.IdToken);
-        }
-
-        /// <summary>
-        /// Get current logged-in user profile
-        /// </summary>
         [Authorize]
         [HttpGet("me")]
         public async Task<ActionResult<UserProfileDto>> Me()
