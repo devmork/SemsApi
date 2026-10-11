@@ -2,7 +2,7 @@
 
 namespace SemsApi.Models
 {
-    public class User : IdentityUser<int>
+    public class ApplicationUser : IdentityUser<int>
     {
         // Custom properties
         public string GoogleSubjectId { get; set; } = string.Empty;

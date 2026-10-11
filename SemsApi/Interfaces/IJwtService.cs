@@ -4,6 +4,6 @@ namespace SemsApi.Interfaces
 {
     public interface IJwtService
     {
-        string GenerateToken(User user, IList<string> roles);
+        string GenerateToken(ApplicationUser user, IList<string> roles);
     }
 }

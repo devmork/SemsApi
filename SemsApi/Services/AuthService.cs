@@ -24,7 +24,7 @@ namespace SemsApi.Services
     public class AuthService : IAuthService
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<User> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<Role> _roleManager;
         private readonly IJwtService _jwtService;
         private readonly AuthOptions _authOptions;
@@ -34,7 +34,7 @@ namespace SemsApi.Services
 
         public AuthService(
                 ApplicationDbContext context,
-                UserManager<User> userManager,
+                UserManager<ApplicationUser> userManager,
                 RoleManager<Role> roleManager,
                 IJwtService jwtService,
                 IOptions<AuthOptions> authOptions,
@@ -217,7 +217,7 @@ namespace SemsApi.Services
             return await BuildLoginResponseAsync(user);
         }
 
-        private async Task<(User? user, string? errorCode)> GetOrCreateUserAsync(
+        private async Task<(ApplicationUser? user, string? errorCode)> GetOrCreateUserAsync(
            GoogleJsonWebSignature.Payload payload)
         {
             var user = await _userManager.Users
@@ -226,7 +226,7 @@ namespace SemsApi.Services
             if (user is not null)
                 return (user, null);
 
-            user = new User
+            user = new ApplicationUser
             {
                 UserName = payload.Email,
                 Email = payload.Email,
@@ -276,7 +276,7 @@ namespace SemsApi.Services
                 Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
         // Adds a new token row to the context (does not save) and returns the raw value
-        private string CreateRefreshToken(User user)
+        private string CreateRefreshToken(ApplicationUser user)
         {
             var raw = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(64));
             _context.RefreshTokens.Add(new RefreshToken
@@ -331,7 +331,7 @@ namespace SemsApi.Services
             return await BuildLoginResponseAsync(user);
         }
 
-        private async Task<LoginResponseDto> BuildLoginResponseAsync(User user)
+        private async Task<LoginResponseDto> BuildLoginResponseAsync(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
 

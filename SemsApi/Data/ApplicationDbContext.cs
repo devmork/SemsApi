@@ -6,7 +6,7 @@ using SemsApi.Models.Eval;
 
 namespace SemsApi.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<User, Role, int>
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Role, int>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -39,7 +39,7 @@ namespace SemsApi.Data
             // =====================================================
             // USER (IdentityUser)
             // =====================================================
-            modelBuilder.Entity<User>(e =>
+            modelBuilder.Entity<ApplicationUser>(e =>
             {
                 e.Property(u => u.GoogleSubjectId)
                     .IsRequired()
