@@ -24,10 +24,17 @@ namespace SemsApi.Data
         public DbSet<GuidanceEvaluationResult> GuidanceEvaluationResults => Set<GuidanceEvaluationResult>();
         public DbSet<GuidanceEvaluationLog> GuidanceEvaluationLogs => Set<GuidanceEvaluationLog>();
         public DbSet<TeacherEvaluationStrength> TeacherEvaluationStrengths => Set<TeacherEvaluationStrength>();
-
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder); // Important! Creates Identity tables
+
+            modelBuilder.Entity<RefreshToken>(e =>
+            {
+                e.HasIndex(t => t.TokenHash).IsUnique();
+                e.Property(t => t.TokenHash).HasMaxLength(64);
+                e.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId);
+            });
 
             // =====================================================
             // USER (IdentityUser)
