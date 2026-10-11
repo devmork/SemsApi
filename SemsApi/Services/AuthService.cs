@@ -7,7 +7,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SemsApi.Configuration;
 using SemsApi.Data;
-using SemsApi.DTO;
+using SemsApi.DTO.Auth;
+using SemsApi.DTO.Student;
+using SemsApi.DTO.Teacher;
+using SemsApi.DTO.User;
 using SemsApi.Interfaces;
 using SemsApi.Models;
 using System.IdentityModel.Tokens.Jwt;
@@ -71,9 +74,13 @@ namespace SemsApi.Services
             };
         }
 
-        public async Task<ActionResult<LoginResponseDto>> GoogleCallbackAsync(GoogleCallbackRequest request)
+        public async Task<ActionResult<LoginResponseDto>> ContinueWithGoogleAsync(ContinueWithGoogleRequest request)
         {
-            var tokenResponse = await ExchangeGoogleAuthCodeForTokensAsync(request.Code);
+            if (string.IsNullOrWhiteSpace(request.Code))
+                return LoginFailure("Authorization code is required.",
+                    "MISSING_CODE", StatusCodes.Status400BadRequest);
+
+            var tokenResponse = await ExchangeGoogleAuthCodeForTokensAsync(request.Code, request.CodeVerifier!);
             if (tokenResponse is null || string.IsNullOrEmpty(tokenResponse.IdToken))
                 return LoginFailure("Failed to exchange authorization code.",
                     "TOKEN_EXCHANGE_FAILED", StatusCodes.Status401Unauthorized);
@@ -82,16 +89,6 @@ namespace SemsApi.Services
             if (payload is null)
                 return LoginFailure("Invalid ID token.",
                     "INVALID_ID_TOKEN", StatusCodes.Status401Unauthorized);
-
-            return await ProcessGoogleLoginAsync(payload);
-        }
-
-        public async Task<ActionResult<LoginResponseDto>> GoogleLoginAsync(string idToken)
-        {
-            var payload = await ValidateGoogleIdTokenAsync(idToken);
-            if (payload is null)
-                return LoginFailure("Invalid Google token.",
-                    "INVALID_GOOGLE_TOKEN", StatusCodes.Status401Unauthorized);
 
             return await ProcessGoogleLoginAsync(payload);
         }
@@ -153,22 +150,29 @@ namespace SemsApi.Services
             }
         }
 
-        public async Task<GoogleTokenResponse?> ExchangeGoogleAuthCodeForTokensAsync(string code)
+        public async Task<GoogleTokenResponse?> ExchangeGoogleAuthCodeForTokensAsync(string code, string codeVerifier)
         {
             var tokenEndpoint = "https://oauth2.googleapis.com/token";
+
             var parameters = new List<KeyValuePair<string, string>>
-        {
-            new("code", code),
-            new("client_id", _options.ClientId),
-            new("client_secret", _options.ClientSecret),
-            new("redirect_uri", _options.RedirectUri),
-            new("grant_type", "authorization_code")
-        };
+            {
+                new("code", code),
+                new("client_id", _options.ClientId),
+                new("client_secret", _options.ClientSecret),
+                new("redirect_uri", _options.RedirectUri),
+                new("grant_type", "authorization_code")
+            };
+
+            if (!string.IsNullOrWhiteSpace(codeVerifier))
+                parameters.Add(new("code_verifier", codeVerifier));
 
             using var client = new HttpClient();
             var response = await client.PostAsync(tokenEndpoint, new FormUrlEncodedContent(parameters));
             if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
                 return null;
+            }
 
             var json = await response.Content.ReadAsStringAsync();
             var tokenResponse = JsonSerializer.Deserialize<GoogleTokenResponse>(json, new JsonSerializerOptions
