@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO
+﻿namespace SemsApi.DTO.Guidance
 {
     public class SubmitGuidanceRequest //Purpose: Payload when student submits guidance evaluation answers
     {

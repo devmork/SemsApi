@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO
+﻿namespace SemsApi.DTO.Guidance
 {
     public class SubmitTeacherStrengthRequest //Purpose: Payload when submitting teacher comments
     {

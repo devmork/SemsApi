@@ -12,8 +12,8 @@ using SemsApi.Data;
 namespace SemsApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260919183455_InitialIdentityAndEvaluation")]
-    partial class InitialIdentityAndEvaluation
+    [Migration("20261011062809_AddRefreshTokenModel")]
+    partial class AddRefreshTokenModel
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -128,46 +128,46 @@ namespace SemsApi.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("SemsApi.Models.AuthorizedEmailDomain", b =>
+            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
                 {
-                    b.Property<int>("DomainId")
+                    b.Property<int>("FormId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DomainId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FormId"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Domain")
+                    b.Property<string>("GradeBand")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("InstitutionName")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.HasKey("DomainId");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
-                    b.HasIndex("Domain")
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("FormId");
+
+                    b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("AuthorizedEmailDomains");
-
-                    b.HasData(
-                        new
-                        {
-                            DomainId = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Domain = "dmc.edu.ph",
-                            InstitutionName = "DMC College Foundation, Inc.",
-                            IsActive = true
-                        });
+                    b.ToTable("EvaluationForm", "Eval");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.GuidanceEvaluationLog", b =>
@@ -256,56 +256,14 @@ namespace SemsApi.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int>("FormId")
+                        .HasColumnType("int");
+
                     b.HasKey("Recno");
 
-                    b.ToTable("TeacherEvaluationCategory", "Eval");
+                    b.HasIndex("FormId");
 
-                    b.HasData(
-                        new
-                        {
-                            Recno = 1,
-                            CatName = "Teaching Effectiveness",
-                            CatNo = 1,
-                            CatRate = 25.00m,
-                            CatRn = "A",
-                            EvalType = "Teacher Evaluation"
-                        },
-                        new
-                        {
-                            Recno = 2,
-                            CatName = "Classroom Management",
-                            CatNo = 2,
-                            CatRate = 20.00m,
-                            CatRn = "B",
-                            EvalType = "Teacher Evaluation"
-                        },
-                        new
-                        {
-                            Recno = 3,
-                            CatName = "Communication Skills",
-                            CatNo = 3,
-                            CatRate = 20.00m,
-                            CatRn = "C",
-                            EvalType = "Teacher Evaluation"
-                        },
-                        new
-                        {
-                            Recno = 4,
-                            CatName = "Subject Knowledge",
-                            CatNo = 4,
-                            CatRate = 20.00m,
-                            CatRn = "D",
-                            EvalType = "Teacher Evaluation"
-                        },
-                        new
-                        {
-                            Recno = 5,
-                            CatName = "Student Engagement",
-                            CatNo = 5,
-                            CatRate = 15.00m,
-                            CatRn = "E",
-                            EvalType = "Teacher Evaluation"
-                        });
+                    b.ToTable("TeacherEvaluationCategory", "Eval");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationResult", b =>
@@ -323,6 +281,9 @@ namespace SemsApi.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int>("FormId")
+                        .HasColumnType("int");
+
                     b.Property<string>("QnName")
                         .HasColumnType("nvarchar(max)");
 
@@ -331,169 +292,9 @@ namespace SemsApi.Migrations
 
                     b.HasKey("Recno");
 
-                    b.ToTable("TeacherEvaluationResult", "Eval");
+                    b.HasIndex("FormId");
 
-                    b.HasData(
-                        new
-                        {
-                            Recno = 1,
-                            CatNo = 1,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher explains lessons clearly and in an organized manner.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 2,
-                            CatNo = 1,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher uses appropriate examples and illustrations.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 3,
-                            CatNo = 1,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher adjusts teaching methods to different learning styles.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 4,
-                            CatNo = 1,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher provides timely and constructive feedback on student work.",
-                            QnNo = 4
-                        },
-                        new
-                        {
-                            Recno = 5,
-                            CatNo = 2,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher maintains an orderly and respectful classroom environment.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 6,
-                            CatNo = 2,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher manages time effectively during class periods.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 7,
-                            CatNo = 2,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher handles student misbehavior fairly and consistently.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 8,
-                            CatNo = 2,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "Classroom rules and expectations are clearly communicated.",
-                            QnNo = 4
-                        },
-                        new
-                        {
-                            Recno = 9,
-                            CatNo = 3,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher communicates expectations and instructions clearly.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 10,
-                            CatNo = 3,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher listens to and responds to student questions.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 11,
-                            CatNo = 3,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher uses language appropriate to the students' level.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 12,
-                            CatNo = 3,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher provides opportunities for students to express ideas.",
-                            QnNo = 4
-                        },
-                        new
-                        {
-                            Recno = 13,
-                            CatNo = 4,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher demonstrates thorough knowledge of the subject matter.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 14,
-                            CatNo = 4,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher relates the subject to real-life situations.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 15,
-                            CatNo = 4,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher stays updated with current developments in the field.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 16,
-                            CatNo = 4,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher answers content-related questions accurately.",
-                            QnNo = 4
-                        },
-                        new
-                        {
-                            Recno = 17,
-                            CatNo = 5,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher encourages active participation from all students.",
-                            QnNo = 1
-                        },
-                        new
-                        {
-                            Recno = 18,
-                            CatNo = 5,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher creates a motivating and supportive learning atmosphere.",
-                            QnNo = 2
-                        },
-                        new
-                        {
-                            Recno = 19,
-                            CatNo = 5,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher uses varied activities to sustain student interest.",
-                            QnNo = 3
-                        },
-                        new
-                        {
-                            Recno = 20,
-                            CatNo = 5,
-                            EvalType = "Teacher Evaluation",
-                            QnName = "The teacher recognizes and praises student effort and achievement.",
-                            QnNo = 4
-                        });
+                    b.ToTable("TeacherEvaluationResult", "Eval");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationStrength", b =>
@@ -529,6 +330,44 @@ namespace SemsApi.Migrations
                     b.HasKey("Recno");
 
                     b.ToTable("TeacherEvaluationStrength", "Eval");
+                });
+
+            modelBuilder.Entity("SemsApi.Models.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Role", b =>
@@ -576,38 +415,6 @@ namespace SemsApi.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Description = "System Administrator",
-                            IsActive = true,
-                            Name = "Admin",
-                            NormalizedName = "ADMIN",
-                            SortOrder = 1
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Description = "Classroom Teacher",
-                            IsActive = true,
-                            Name = "Teacher",
-                            NormalizedName = "TEACHER",
-                            SortOrder = 2
-                        },
-                        new
-                        {
-                            Id = 3,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Description = "Student",
-                            IsActive = true,
-                            Name = "Student",
-                            NormalizedName = "STUDENT",
-                            SortOrder = 3
-                        });
                 });
 
             modelBuilder.Entity("SemsApi.Models.Student", b =>
@@ -849,6 +656,39 @@ namespace SemsApi.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationCategory", b =>
+                {
+                    b.HasOne("SemsApi.Models.Eval.EvaluationForm", "Form")
+                        .WithMany("Categories")
+                        .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Form");
+                });
+
+            modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationResult", b =>
+                {
+                    b.HasOne("SemsApi.Models.Eval.EvaluationForm", "Form")
+                        .WithMany()
+                        .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Form");
+                });
+
+            modelBuilder.Entity("SemsApi.Models.RefreshToken", b =>
+                {
+                    b.HasOne("SemsApi.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SemsApi.Models.Student", b =>
                 {
                     b.HasOne("SemsApi.Models.User", "User")
@@ -869,6 +709,11 @@ namespace SemsApi.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
+                {
+                    b.Navigation("Categories");
                 });
 
             modelBuilder.Entity("SemsApi.Models.User", b =>
