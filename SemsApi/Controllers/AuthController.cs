@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SemsApi.DTO;
+using SemsApi.DTO.Auth;
+using SemsApi.DTO.User;
 using SemsApi.Interfaces;
 
 namespace SemsApi.Controllers
@@ -16,10 +17,10 @@ namespace SemsApi.Controllers
             _authService = authService;
         }
 
-        [HttpPost("google-callback")]
-        public async Task<ActionResult<LoginResponseDto>> GoogleCallback([FromBody] GoogleCallbackRequest request)
+        [HttpPost("google")]
+        public async Task<ActionResult<LoginResponseDto>> ContinueWithGoogle([FromBody] ContinueWithGoogleRequest request)
         {
-            return await _authService.GoogleCallbackAsync(request);
+            return await _authService.ContinueWithGoogleAsync(request);
         }
 
         [Authorize]
