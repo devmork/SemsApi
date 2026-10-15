@@ -4,17 +4,17 @@ namespace SemsApi.Models
 {
     public class ApplicationUser : IdentityUser<int>
     {
-        // Custom properties
         public string GoogleSubjectId { get; set; } = string.Empty;
         public string FirstName { get; set; } = string.Empty;
         public string? MiddleName { get; set; }
         public string LastName { get; set; } = string.Empty;
-        public string Status { get; set; } = "Active";
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public string? PictureUrl { get; set; }
+        public UserStatus Status { get; set; } = UserStatus.Active;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
         public DateTime? LastLoginAt { get; set; }
 
-        // Navigation properties
+        public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
         public Student? Student { get; set; }
         public Teacher? Teacher { get; set; }
     }
