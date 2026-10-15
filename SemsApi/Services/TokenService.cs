@@ -13,12 +13,10 @@ namespace SemsApi.Services
 {
     public class TokenService : ITokenService
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IConfiguration _configuration;
 
-        public TokenService(IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
+        public TokenService(IConfiguration configuration)
         {
-            _httpContextAccessor = httpContextAccessor;
             _configuration = configuration;
         }
 
