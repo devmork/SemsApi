@@ -2,13 +2,21 @@
 {
     public class RefreshToken
     {
-        public int Id { get; set; }
-        public int UserId { get; set; }
-        public ApplicationUser User { get; set; } = null!;
-        public string TokenHash { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime ExpiresAt { get; set; }
-        public DateTime? RevokedAt { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public string UserId { get; set; } = default!;
+        public ApplicationUser User { get; set; } = default!;
+
+        public string TokenHash { get; set; } = default!;
+        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+        public DateTime ExpiresAtUtc { get; set; }
+        public string? CreatedByIp { get; set; }
+
+        public DateTime? RevokedAtUtc { get; set; }
+        public string? RevokedByIp { get; set; }
         public string? ReplacedByTokenHash { get; set; }
+
+        public bool IsRevoked => RevokedAtUtc is not null;
+        public bool IsExpired => DateTime.UtcNow >= ExpiresAtUtc;
+        public bool IsActive => !IsRevoked && !IsExpired;
     }
 }
