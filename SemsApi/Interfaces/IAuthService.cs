@@ -1,19 +1,16 @@
 ﻿using Google.Apis.Auth;
 using Microsoft.AspNetCore.Mvc;
-using SemsApi.DTO.Auth;
-using SemsApi.DTO.User;
+using SemsApi.DTO.Authentication;
+using SemsApi.Models;
+using System.Security.Claims;
 
 namespace SemsApi.Interfaces
 {
     public interface IAuthService
     {
-
-        Task<ActionResult<LoginResponseDto>> ContinueWithGoogleAsync(ContinueWithGoogleRequest request);
-        Task<ActionResult<UserProfileDto>> GetUserProfileAsync();
-        Task LogoutAsync();
-        Task SetRefreshTokenCookieAsync(string refreshToken);
-        Task<ActionResult<LoginResponseDto>> RefreshAsync(string refreshToken);
-        Task<GoogleJsonWebSignature.Payload?> ValidateGoogleIdTokenAsync(string idToken);
-        Task<GoogleTokenResponse?> ExchangeGoogleAuthCodeForTokensAsync(string code, string codeVerifier);
+        Task<GoogleSignInResponse> SignInWithGoogleAsync(ClaimsPrincipal? principal);
+        Task<TokenResponse> IssueTokensAsync(ApplicationUser user, string? ip, CancellationToken ct = default);
+        Task<TokenResponse> RefreshTokenAsync(string? refreshToken, string? ip, CancellationToken ct = default);
+        Task LogoutAsync(string? refreshToken, string? ip, CancellationToken ct = default);
     }
 }
