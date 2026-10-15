@@ -1,0 +1,61 @@
+﻿using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
+using SemsApi.DTO.Authentication;
+using SemsApi.Interfaces;
+using SemsApi.Models;
+using System.Buffers.Text;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace SemsApi.Services
+{
+    public class TokenService : ITokenService
+    {
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IConfiguration _configuration;
+
+        public TokenService(IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
+        {
+            _httpContextAccessor = httpContextAccessor;
+            _configuration = configuration;
+        }
+
+        public (string jwtToken, DateTime expiresAtUtc) GenerateAccessToken(ApplicationUser applicationUser, IEnumerable<string> roles)
+        {
+            var expires = DateTime.UtcNow.AddMinutes(15);
+
+            var claims = new List<Claim>
+            {
+                new(JwtRegisteredClaimNames.Sub, applicationUser.Id.ToString()),
+                new(JwtRegisteredClaimNames.Name, applicationUser.UserName ?? ""),
+                new(JwtRegisteredClaimNames.Email, applicationUser.Email ?? ""),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+            claims.AddRange(roles.Select(r => new Claim("role", r)));
+
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            var descriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"],
+                Expires = DateTime.Now.AddMinutes(15),
+                SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
+            };
+
+            return (new JsonWebTokenHandler().CreateToken(descriptor), DateTime.Now.AddMinutes(15));
+
+        }
+
+        public GeneratedRefreshToken GenerateRefreshToken()
+        {
+            var raw = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(64));
+            return new(raw, Hash(raw), DateTime.UtcNow.AddDays(7));
+        }
+        public string Hash(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    }
+}
