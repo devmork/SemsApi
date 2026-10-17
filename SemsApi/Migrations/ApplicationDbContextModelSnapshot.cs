@@ -199,12 +199,6 @@ namespace SemsApi.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("RefreshToken")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("RefreshTokenExpiresAtUtc")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
@@ -441,6 +435,42 @@ namespace SemsApi.Migrations
                     b.ToTable("TeacherEvaluationStrength", "Eval");
                 });
 
+            modelBuilder.Entity("SemsApi.Models.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("SemsApi.Models.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -645,6 +675,17 @@ namespace SemsApi.Migrations
                     b.Navigation("Form");
                 });
 
+            modelBuilder.Entity("SemsApi.Models.RefreshToken", b =>
+                {
+                    b.HasOne("SemsApi.Models.ApplicationUser", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SemsApi.Models.Student", b =>
                 {
                     b.HasOne("SemsApi.Models.ApplicationUser", "User")
@@ -669,6 +710,8 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("SemsApi.Models.ApplicationUser", b =>
                 {
+                    b.Navigation("RefreshTokens");
+
                     b.Navigation("Student");
 
                     b.Navigation("Teacher");
