@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using SemsApi.Exceptions;
 using System.Net;
 
@@ -13,24 +14,17 @@ namespace SemsApi.Utilities
         }
         public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
         {
-            var (statusCode, message) = GetExceptionDetails(exception);
-
-            _logger.LogError(exception, exception.Message);
-
-            httpContext.Response.StatusCode = (int)statusCode;
-            await httpContext.Response.WriteAsJsonAsync(message, cancellationToken);
-
+            var (status, message) = GetExceptionDetails(exception);
+            httpContext.Response.StatusCode = status;
+            await httpContext.Response.WriteAsJsonAsync(new ProblemDetails { Status = status, Title = message }, cancellationToken);
             return true;
         }
 
-        private (HttpStatusCode statusCode, string message) GetExceptionDetails(Exception exception)
+        private static (int status, string message) GetExceptionDetails(Exception ex) => ex switch
         {
-            return exception switch
-            {
-                RefreshTokenException => (HttpStatusCode.Unauthorized, exception.Message),
-                ExternalLoginProviderException => (HttpStatusCode.BadRequest, exception.Message),
-                _ => (HttpStatusCode.InternalServerError, $"An unexpected error occurred: {exception.Message}")
-            };
-        }
+            RefreshTokenException => (StatusCodes.Status401Unauthorized, ex.Message),
+            ExternalLoginProviderException => (StatusCodes.Status400BadRequest, ex.Message),
+            _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
+        };
     }
 }

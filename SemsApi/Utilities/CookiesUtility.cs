@@ -1,4 +1,5 @@
 ﻿using Google.Apis.Auth.OAuth2.Responses;
+using SemsApi.DTO.Authentication;
 
 namespace SemsApi.Utilities
 {
@@ -8,7 +9,7 @@ namespace SemsApi.Utilities
         public const string RefreshToken = "REFRESH_TOKEN";
         private const string RefreshPath = "/api/auth";
 
-        public static void Append(HttpResponse res, TokenResponse t)
+        public static void Append(HttpResponse res, AuthTokenResponse t)
         {
             res.Cookies.Append(AccessToken, t.AccessToken, Options(t.AccessExpiresAtUtc, "/"));
             res.Cookies.Append(RefreshToken, t.RefreshToken, Options(t.RefreshExpiresAtUtc, RefreshPath));
