@@ -1,50 +1,77 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using SemsApi.DTO.Auth;
-using SemsApi.DTO.User;
+using SemsApi.Exceptions;
 using SemsApi.Interfaces;
+using SemsApi.Utilities;
 
 namespace SemsApi.Controllers
 {
     [ApiController]
     [Route("api/auth")]
-    public class AuthController : ControllerBase
+    public class AuthController(IAuthService authService, IConfiguration configuration) : ControllerBase
     {
-        private readonly IAuthService _authService;
+        private readonly string _frontendUrl = configuration["Frontend:BaseUrl"]!.TrimEnd('/');
 
-        public AuthController(IAuthService authService)
+        [HttpGet("google/signin")]
+        public IActionResult GoogleLogin([FromQuery] string? returnUrl)
         {
-            _authService = authService;
+            var props = new AuthenticationProperties { RedirectUri = "/api/auth/google/callback" };
+            props.Items["returnUrl"] = RedirectUtility.SafeReturnUrl(returnUrl);
+            return Challenge(props, GoogleDefaults.AuthenticationScheme);
         }
 
-        [HttpPost("google")]
-        public async Task<ActionResult<LoginResponseDto>> ContinueWithGoogle([FromBody] ContinueWithGoogleRequest request)
+        [HttpGet("google/callback")]
+        public async Task<IActionResult> GoogleCallback(CancellationToken ct)
         {
-            return await _authService.ContinueWithGoogleAsync(request);
-        }
+            var external = await HttpContext.AuthenticateAsync(IdentityConstants.ExternalScheme);
+            if (!external.Succeeded)
+                return Redirect(RedirectUtility.LoginErrorUrl(_frontendUrl, SignInErrorCodes.GoogleAuthFailed));
 
-        [Authorize]
-        [HttpGet("me")]
-        public async Task<ActionResult<UserProfileDto>> Me()
-        {
-            return await _authService.GetUserProfileAsync();
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+
+            try
+            {
+                var result = await authService.SignInWithGoogleAsync(external.Principal);
+                var tokens = await authService.IssueTokensAsync(result.User, ct);
+                CookiesUtility.Append(Response, tokens);
+
+                external.Properties!.Items.TryGetValue("returnUrl", out var returnUrl);
+                return Redirect($"{_frontendUrl}{RedirectUtility.SafeReturnUrl(returnUrl)}");
+            }
+            catch (SignInRejectedException ex)
+            {
+                return Redirect(RedirectUtility.LoginErrorUrl(_frontendUrl, ex.Code));
+            }
+            catch (RegistrationFailedException)
+            {
+                return Redirect(RedirectUtility.LoginErrorUrl(_frontendUrl, SignInErrorCodes.GoogleAuthFailed));
+            }
         }
 
         [HttpPost("refresh")]
-        public async Task<ActionResult<LoginResponseDto>> Refresh()
+        public async Task<IActionResult> Refresh(CancellationToken ct)
         {
-            var refreshToken = Request.Cookies["refresh_token"];
-            if (string.IsNullOrEmpty(refreshToken))
-                return Unauthorized(new { message = "No refresh token." });
-
-            return await _authService.RefreshAsync(refreshToken);
+            try
+            {
+                var tokens = await authService.RefreshTokenAsync(Request.Cookies[CookiesUtility.RefreshToken], ct);
+                CookiesUtility.Append(Response, tokens);
+                return Ok(new { accessTokenExpiresAtUtc = tokens.AccessExpiresAtUtc });
+            }
+            catch (RefreshTokenException)
+            {
+                CookiesUtility.Clear(Response);
+                throw;   // GlobalExceptionHandler -> 401
+            }
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
+        public async Task<IActionResult> Logout(CancellationToken ct)
         {
-            await _authService.LogoutAsync();
-            return Ok();
+            await authService.LogoutAsync(Request.Cookies[CookiesUtility.RefreshToken], ct);
+            CookiesUtility.Clear(Response);
+            return NoContent();
         }
     }
 }
