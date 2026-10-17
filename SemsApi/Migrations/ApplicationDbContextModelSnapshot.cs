@@ -167,6 +167,27 @@ namespace SemsApi.Migrations
                     b.ToTable("EvaluationForm", "Eval");
                 });
 
+            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationType", b =>
+                {
+                    b.Property<int>("EvaluationTypeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EvaluationTypeId"));
+
+                    b.Property<string>("EvaluationTypeName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("EvaluationTypeId");
+
+                    b.HasIndex("EvaluationTypeName")
+                        .IsUnique();
+
+                    b.ToTable("EvaluationType", "Eval");
+                });
+
             modelBuilder.Entity("SemsApi.Models.Eval.GuidanceEvaluationLog", b =>
                 {
                     b.Property<int>("Recno")

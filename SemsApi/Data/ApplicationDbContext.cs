@@ -19,6 +19,7 @@ namespace SemsApi.Data
 
         // Evaluation tables
         public DbSet<EvaluationForm> EvaluationForms => Set<EvaluationForm>();
+        public DbSet<EvaluationType> EvaluationTypes => Set<EvaluationType>();
         public DbSet<TeacherEvaluationCategory> TeacherEvaluationCategories => Set<TeacherEvaluationCategory>();
         public DbSet<TeacherEvaluationResult> TeacherEvaluationResults => Set<TeacherEvaluationResult>();
         public DbSet<GuidanceEvaluationResult> GuidanceEvaluationResults => Set<GuidanceEvaluationResult>();
@@ -165,6 +166,15 @@ namespace SemsApi.Data
                 e.Property(x => x.GradeBand).IsRequired().HasMaxLength(30);
                 e.Property(x => x.TargetType).IsRequired().HasMaxLength(30);
                 e.HasIndex(x => x.Code).IsUnique();
+            });
+
+            modelBuilder.Entity<EvaluationType>(e =>
+            {
+                e.ToTable("EvaluationType", "Eval");
+                e.HasKey(x => x.EvaluationTypeId);
+                e.Property(x => x.EvaluationTypeId).ValueGeneratedOnAdd();
+                e.Property(x => x.EvaluationTypeName).IsRequired().HasMaxLength(100);
+                e.HasIndex(x => x.EvaluationTypeName).IsUnique();
             });
 
             modelBuilder.Entity<TeacherEvaluationCategory>(e =>
