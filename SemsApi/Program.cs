@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using SemsApi.Configuration;
 using SemsApi.Data;
 using SemsApi.Interfaces;
 using SemsApi.Models;
@@ -31,9 +30,6 @@ builder.Services.AddIdentity<ApplicationUser, Role>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-builder.Services.Configure<GoogleOptions>(builder.Configuration.GetSection("Google"));
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
-
 builder.Services.Scan(scan => scan
     .FromAssemblyOf<Program>()
     .AddClasses(classes => classes
@@ -46,14 +42,6 @@ builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddCookie(options =>
-{
-    options.Cookie.Name = "ACCESS_TOKEN";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(15);
 })
 .AddGoogle(options =>
 {
@@ -62,6 +50,7 @@ builder.Services.AddAuthentication(options =>
     options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     options.SaveTokens = false;
     options.ClaimActions.MapJsonKey("email_verified", "email_verified");
+    options.SignInScheme = IdentityConstants.ExternalScheme;
 
     options.Events.OnRedirectToAuthorizationEndpoint = ctx =>
     {
@@ -150,7 +139,7 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "SEMS API v1");
     });
 }
-
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseCors("CorsPolicy");
 app.UseAuthentication();
