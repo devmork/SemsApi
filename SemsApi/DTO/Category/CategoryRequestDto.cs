@@ -1,12 +1,10 @@
 ﻿namespace SemsApi.DTO
 {
-    /// <summary>
-    /// Request payload for creating or updating a TeacherEvaluationCategory.
-    /// Recno is intentionally omitted — it is database-generated.
-    /// </summary>
     public class CategoryRequestDto
     {
-        public string? EvalType { get; set; }
+        public int? FormId { get; set; }
+        public int? EvaluationTypeId { get; set; }
+        public string? EvaluationTypeName { get; set; }
         public int? CatNo { get; set; }
         public string? CatRn { get; set; }
         public string? CatName { get; set; }
