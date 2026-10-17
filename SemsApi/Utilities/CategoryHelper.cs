@@ -19,9 +19,8 @@ namespace SemsApi.Utilities
         public static CategoryResponseDto MapToResponse(TeacherEvaluationCategory c) =>
             new()
             {
-                Recno = c.Recno,
-                EvalType = c.EvalType,
                 CatNo = c.CatNo,
+                EvaluationTypeId = c.EvaluationTypeId,
                 CatRn = c.CatRn,
                 CatName = c.CatName,
                 CatRate = c.CatRate
@@ -36,15 +35,10 @@ namespace SemsApi.Utilities
             if (request is null)
                 return "Request body is required.";
 
-            if (string.IsNullOrWhiteSpace(request.EvalType))
-                return "EvalType is required.";
-            if (request.EvalType.Trim().Length > 50)
-                return "EvalType must not exceed 50 characters.";
-
-            if (!request.CatNo.HasValue)
-                return "CatNo is required.";
-            if (request.CatNo.Value <= 0)
-                return "CatNo must be a positive number.";
+            if (!request.EvaluationTypeId.HasValue)
+                return "EvaluationTypeId is required.";
+            if (request.EvaluationTypeId.Value <= 0)
+                return "EvaluationTypeId must be a positive number.";
 
             if (string.IsNullOrWhiteSpace(request.CatRn))
                 return "CatRn is required.";

@@ -2,8 +2,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
+using SemsApi.DTO;
 using SemsApi.DTO.Evaluation;
 using SemsApi.DTO.Guidance;
+using SemsApi.DTO.Teacher;
 using SemsApi.Models.Eval;
 
 namespace SemsApi.Controllers
@@ -20,58 +22,33 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get full evaluation form (Categories + Questions)
-        /// You can pass formCode (recommended) or the old evalType
-        /// Examples:
-        ///   /api/evaluation/form?formCode=PRE-G3
-        ///   /api/evaluation/form?formCode=G4-G6
-        ///   /api/evaluation/form?formCode=JHS-SHS
+        /// Get full evaluation form (Categories + Questions) for an evaluation type
         /// </summary>
         [HttpGet("form")]
         public async Task<ActionResult<List<EvaluationCategoryDto>>> GetForm(
-            [FromQuery] string? formCode = null,
-            [FromQuery] string evalType = "Teacher Evaluation")
+            [FromQuery] int evaluationTypeId)
         {
-            int? formId = null;
+            if (!await _context.EvaluationTypes.AnyAsync(t => t.EvaluationTypeId == evaluationTypeId))
+                return NotFound(new { message = "Evaluation type not found." });
 
-            if (!string.IsNullOrWhiteSpace(formCode))
-            {
-                formId = await _context.EvaluationForms
-                    .Where(f => f.Code == formCode && f.IsActive)
-                    .Select(f => (int?)f.FormId)
-                    .FirstOrDefaultAsync();
-
-                if (formId is null)
-                    return NotFound(new { message = $"Form with code '{formCode}' not found." });
-            }
-
-            var categoriesQuery = _context.TeacherEvaluationCategories.AsQueryable();
-            var questionsQuery = _context.TeacherEvaluationResults.AsQueryable();
-
-            if (formId.HasValue)
-            {
-                categoriesQuery = categoriesQuery.Where(c => c.FormId == formId.Value);
-                questionsQuery = questionsQuery.Where(q => q.FormId == formId.Value);
-            }
-            else
-            {
-                // Fallback to old behavior
-                categoriesQuery = categoriesQuery.Where(c => c.EvalType == evalType);
-                questionsQuery = questionsQuery.Where(q => q.EvalType == evalType);
-            }
-
-            var categories = await categoriesQuery
+            var categories = await _context.TeacherEvaluationCategories
+                .AsNoTracking()
+                .Where(c => c.EvaluationTypeId == evaluationTypeId)
                 .OrderBy(c => c.CatNo)
                 .ToListAsync();
 
-            var questions = await questionsQuery
+            var catNos = categories.Select(c => c.CatNo).ToList();
+
+            var questions = await _context.TeacherEvaluationResults
+                .AsNoTracking()
+                .Where(q => catNos.Contains(q.CatNo))
                 .OrderBy(q => q.CatNo)
                 .ThenBy(q => q.QnNo)
                 .ToListAsync();
 
             var result = categories.Select(c => new EvaluationCategoryDto
             {
-                CatNo = c.CatNo ?? 0,
+                CatNo = c.CatNo,
                 CatRn = c.CatRn,
                 CatName = c.CatName,
                 CatRate = c.CatRate,
@@ -79,7 +56,7 @@ namespace SemsApi.Controllers
                     .Where(q => q.CatNo == c.CatNo)
                     .Select(q => new EvaluationQuestionDto
                     {
-                        QnNo = q.QnNo ?? 0,
+                        QnNo = q.QnNo,
                         QnName = q.QnName
                     })
                     .ToList()
@@ -89,15 +66,17 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get questions (optionally filtered by category)
+        /// Get questions (optionally filtered by evaluation type and/or category)
         /// </summary>
         [HttpGet("questions")]
         public async Task<ActionResult> GetQuestions(
-            [FromQuery] string evalType = "Teacher Evaluation",
+            [FromQuery] int? evaluationTypeId = null,
             [FromQuery] int? catNo = null)
         {
-            var query = _context.TeacherEvaluationResults
-                .Where(q => q.EvalType == evalType);
+            var query = _context.TeacherEvaluationResults.AsNoTracking().AsQueryable();
+
+            if (evaluationTypeId.HasValue)
+                query = query.Where(q => q.Category.EvaluationTypeId == evaluationTypeId.Value);
 
             if (catNo.HasValue)
                 query = query.Where(q => q.CatNo == catNo.Value);
@@ -191,9 +170,14 @@ namespace SemsApi.Controllers
                 return BadRequest(new { message = "TeacherId, StudentId, and Comment are required." });
             }
 
+            if (!await _context.EvaluationTypes.AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId))
+            {
+                return BadRequest(new { message = "Evaluation type not found." });
+            }
+
             var strength = new TeacherEvaluationStrength
             {
-                EvalType = request.EvalType,
+                EvaluationTypeId = request.EvaluationTypeId,
                 TeacherId = request.TeacherId,
                 StudentId = request.StudentId,
                 Sy = request.Sy,
@@ -242,6 +226,16 @@ namespace SemsApi.Controllers
 
             var data = await query
                 .OrderByDescending(s => s.Recno)
+                .Select(s => new TeacherStrengthDto
+                {
+                    Recno = s.Recno,
+                    EvaluationTypeId = s.EvaluationTypeId,
+                    TeacherId = s.TeacherId,
+                    StudentId = s.StudentId,
+                    Sy = s.Sy,
+                    Term = s.Term,
+                    CommentName = s.CommentName
+                })
                 .ToListAsync();
 
             return Ok(data);
