@@ -22,17 +22,16 @@ namespace SemsApi.Services
 
         public (string jwtToken, DateTime expiresAtUtc) GenerateAccessToken(ApplicationUser applicationUser, IEnumerable<string> roles)
         {
-            var expires = DateTime.UtcNow.AddMinutes(15);
 
             var claims = new List<Claim>
             {
                 new(JwtRegisteredClaimNames.Sub, applicationUser.Id.ToString()),
                 new(JwtRegisteredClaimNames.Name, applicationUser.UserName ?? ""),
                 new(JwtRegisteredClaimNames.Email, applicationUser.Email ?? ""),
-                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
-            claims.AddRange(roles.Select(r => new Claim("role", r)));
 
+            claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
             var descriptor = new SecurityTokenDescriptor
@@ -40,15 +39,15 @@ namespace SemsApi.Services
                 Subject = new ClaimsIdentity(claims),
                 Issuer = _configuration["Jwt:Issuer"],
                 Audience = _configuration["Jwt:Audience"],
-                Expires = DateTime.Now.AddMinutes(15),
+                Expires = DateTime.UtcNow.AddMinutes(15),
                 SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
             };
 
-            return (new JsonWebTokenHandler().CreateToken(descriptor), DateTime.Now.AddMinutes(15));
+            return (new JsonWebTokenHandler().CreateToken(descriptor), DateTime.UtcNow.AddMinutes(15));
 
         }
 
-        public GeneratedRefreshToken GenerateRefreshToken()
+        public GeneratedRefreshTsoken GenerateRefreshToken()
         {
             var raw = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(64));
             return new(raw, Hash(raw), DateTime.UtcNow.AddDays(7));

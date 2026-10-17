@@ -6,7 +6,7 @@ namespace SemsApi.Interfaces
     public interface ITokenService
     {
         (string jwtToken, DateTime expiresAtUtc) GenerateAccessToken(ApplicationUser applicationUser, IEnumerable<string> roles);
-        GeneratedRefreshToken GenerateRefreshToken();
+        GeneratedRefreshTsoken GenerateRefreshToken();
         string Hash(string token);
     }
 }
