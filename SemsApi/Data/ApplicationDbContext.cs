@@ -182,16 +182,23 @@ namespace SemsApi.Data
                 e.ToTable("TeacherEvaluationCategory", "Eval");
                 e.HasKey(x => x.Recno);
                 e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.EvalType).HasMaxLength(50);
                 e.Property(x => x.CatRn).HasMaxLength(10);
                 e.Property(x => x.CatName).HasMaxLength(150);
                 e.Property(x => x.CatRate).HasColumnType("decimal(18,2)");
 
-                // New relationship
                 e.HasOne(x => x.Form)
                  .WithMany(f => f.Categories)
                  .HasForeignKey(x => x.FormId)
                  .OnDelete(DeleteBehavior.Restrict);
+
+                // NEW
+                e.HasOne(x => x.EvaluationType)
+                 .WithMany()                                   // no inverse nav needed
+                 .HasForeignKey(x => x.EvaluationTypeId)
+                 .OnDelete(DeleteBehavior.Restrict);           // can't delete a type still in use
+
+                // Optional but recommended: prevent duplicate CatNo within (Form, Type)
+                e.HasIndex(x => new { x.FormId, x.EvaluationTypeId, x.CatNo }).IsUnique();
             });
 
             modelBuilder.Entity<TeacherEvaluationResult>(e =>

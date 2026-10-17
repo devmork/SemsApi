@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.Evaluation;
@@ -19,14 +18,6 @@ namespace SemsApi.Controllers
             _context = context;
         }
 
-        /// <summary>
-        /// Get full evaluation form (Categories + Questions)
-        /// You can pass formCode (recommended) or the old evalType
-        /// Examples:
-        ///   /api/evaluation/form?formCode=PRE-G3
-        ///   /api/evaluation/form?formCode=G4-G6
-        ///   /api/evaluation/form?formCode=JHS-SHS
-        /// </summary>
         [HttpGet("form")]
         public async Task<ActionResult<List<EvaluationCategoryDto>>> GetForm(
             [FromQuery] string? formCode = null,
@@ -55,9 +46,11 @@ namespace SemsApi.Controllers
             }
             else
             {
-                // Fallback to old behavior
-                categoriesQuery = categoriesQuery.Where(c => c.EvalType == evalType);
+                // Fallback for questions (since TeacherEvaluationResult still has EvalType string)
                 questionsQuery = questionsQuery.Where(q => q.EvalType == evalType);
+
+                // For categories, join through EvaluationType since EvalType string was removed
+                categoriesQuery = categoriesQuery.Where(c => c.EvaluationType.EvaluationTypeName == evalType);
             }
 
             var categories = await categoriesQuery
@@ -88,9 +81,6 @@ namespace SemsApi.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Get questions (optionally filtered by category)
-        /// </summary>
         [HttpGet("questions")]
         public async Task<ActionResult> GetQuestions(
             [FromQuery] string evalType = "Teacher Evaluation",
@@ -116,9 +106,6 @@ namespace SemsApi.Controllers
             return Ok(data);
         }
 
-        /// <summary>
-        /// Submit Guidance Evaluation (answers + log)
-        /// </summary>
         [HttpPost("guidance/submit")]
         public async Task<ActionResult> SubmitGuidance([FromBody] SubmitGuidanceRequest request)
         {
@@ -127,7 +114,6 @@ namespace SemsApi.Controllers
                 return BadRequest(new { message = "StudentId and at least one answer are required." });
             }
 
-            // Prevent duplicate submission
             var alreadySubmitted = await _context.GuidanceEvaluationLogs
                 .AnyAsync(l => l.StudentId == request.StudentId
                             && l.Sy == request.Sy
@@ -142,7 +128,6 @@ namespace SemsApi.Controllers
 
             try
             {
-                // Insert Log
                 var log = new GuidanceEvaluationLog
                 {
                     StudentId = request.StudentId,
@@ -152,7 +137,6 @@ namespace SemsApi.Controllers
                 };
                 _context.GuidanceEvaluationLogs.Add(log);
 
-                // Insert Answers
                 foreach (var answer in request.Answers)
                 {
                     _context.GuidanceEvaluationResults.Add(new GuidanceEvaluationResult
@@ -178,9 +162,6 @@ namespace SemsApi.Controllers
             }
         }
 
-        /// <summary>
-        /// Submit Teacher Strength / Comment
-        /// </summary>
         [HttpPost("teacher/strength")]
         public async Task<ActionResult> SubmitTeacherStrength([FromBody] SubmitTeacherStrengthRequest request)
         {
@@ -207,9 +188,6 @@ namespace SemsApi.Controllers
             return Ok(new { message = "Teacher strength comment saved successfully." });
         }
 
-        /// <summary>
-        /// Get Guidance results of a student
-        /// </summary>
         [HttpGet("guidance/results/{studentId}")]
         public async Task<ActionResult> GetGuidanceResults(
             string studentId,
@@ -225,9 +203,6 @@ namespace SemsApi.Controllers
             return Ok(results);
         }
 
-        /// <summary>
-        /// Get Teacher Strength comments
-        /// </summary>
         [HttpGet("teacher/strengths")]
         public async Task<ActionResult> GetTeacherStrengths(
             [FromQuery] string? teacherId = null,
