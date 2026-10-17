@@ -172,7 +172,7 @@ namespace SemsApi.Controllers
         private Task<bool> CategoryExistsAsync(string evalType, int catNo) =>
             _context.TeacherEvaluationCategories
                 .AsNoTracking()
-                .AnyAsync(c => c.EvalType == evalType && c.CatNo == catNo);
+                .AnyAsync(c => c.EvaluationType.EvaluationTypeName == evalType && c.CatNo == catNo);
 
         private Task<TeacherEvaluationResult?> FindQuestionAsync(
             string evalType, int catNo, int qnNo, bool track)
