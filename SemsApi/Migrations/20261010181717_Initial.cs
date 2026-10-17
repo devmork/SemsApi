@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace SemsApi.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -68,6 +68,22 @@ namespace SemsApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AuthorizedEmailDomains",
+                columns: table => new
+                {
+                    DomainId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Domain = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    InstitutionName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AuthorizedEmailDomains", x => x.DomainId);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "EvaluationForm",
                 schema: "Eval",
                 columns: table => new
@@ -84,20 +100,6 @@ namespace SemsApi.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_EvaluationForm", x => x.FormId);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "EvaluationType",
-                schema: "Eval",
-                columns: table => new
-                {
-                    EvaluationTypeId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    EvaluationTypeName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_EvaluationType", x => x.EvaluationTypeId);
                 });
 
             migrationBuilder.CreateTable(
@@ -262,30 +264,6 @@ namespace SemsApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "RefreshTokens",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<int>(type: "int", nullable: false),
-                    TokenHash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    RevokedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ReplacedByTokenHash = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_RefreshTokens", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_RefreshTokens_AspNetUsers_UserId",
-                        column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Students",
                 columns: table => new
                 {
@@ -332,6 +310,32 @@ namespace SemsApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "TeacherEvaluationCategory",
+                schema: "Eval",
+                columns: table => new
+                {
+                    Recno = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FormId = table.Column<int>(type: "int", nullable: false),
+                    EvalType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CatNo = table.Column<int>(type: "int", nullable: true),
+                    CatRn = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    CatName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: true),
+                    CatRate = table.Column<decimal>(type: "decimal(18,2)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TeacherEvaluationCategory", x => x.Recno);
+                    table.ForeignKey(
+                        name: "FK_TeacherEvaluationCategory_EvaluationForm_FormId",
+                        column: x => x.FormId,
+                        principalSchema: "Eval",
+                        principalTable: "EvaluationForm",
+                        principalColumn: "FormId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "TeacherEvaluationResult",
                 schema: "Eval",
                 columns: table => new
@@ -353,39 +357,6 @@ namespace SemsApi.Migrations
                         principalSchema: "Eval",
                         principalTable: "EvaluationForm",
                         principalColumn: "FormId",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "TeacherEvaluationCategory",
-                schema: "Eval",
-                columns: table => new
-                {
-                    Recno = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    FormId = table.Column<int>(type: "int", nullable: false),
-                    EvaluationTypeId = table.Column<int>(type: "int", nullable: false),
-                    CatNo = table.Column<int>(type: "int", nullable: true),
-                    CatRn = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
-                    CatName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: true),
-                    CatRate = table.Column<decimal>(type: "decimal(18,2)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_TeacherEvaluationCategory", x => x.Recno);
-                    table.ForeignKey(
-                        name: "FK_TeacherEvaluationCategory_EvaluationForm_FormId",
-                        column: x => x.FormId,
-                        principalSchema: "Eval",
-                        principalTable: "EvaluationForm",
-                        principalColumn: "FormId",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_TeacherEvaluationCategory_EvaluationType_EvaluationTypeId",
-                        column: x => x.EvaluationTypeId,
-                        principalSchema: "Eval",
-                        principalTable: "EvaluationType",
-                        principalColumn: "EvaluationTypeId",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -435,29 +406,17 @@ namespace SemsApi.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AuthorizedEmailDomains_Domain",
+                table: "AuthorizedEmailDomains",
+                column: "Domain",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_EvaluationForm_Code",
                 schema: "Eval",
                 table: "EvaluationForm",
                 column: "Code",
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_EvaluationType_EvaluationTypeName",
-                schema: "Eval",
-                table: "EvaluationType",
-                column: "EvaluationTypeName",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_RefreshTokens_TokenHash",
-                table: "RefreshTokens",
-                column: "TokenHash",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_RefreshTokens_UserId",
-                table: "RefreshTokens",
-                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Students_StudentNumber",
@@ -472,18 +431,10 @@ namespace SemsApi.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_TeacherEvaluationCategory_EvaluationTypeId",
+                name: "IX_TeacherEvaluationCategory_FormId",
                 schema: "Eval",
                 table: "TeacherEvaluationCategory",
-                column: "EvaluationTypeId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TeacherEvaluationCategory_FormId_EvaluationTypeId_CatNo",
-                schema: "Eval",
-                table: "TeacherEvaluationCategory",
-                columns: new[] { "FormId", "EvaluationTypeId", "CatNo" },
-                unique: true,
-                filter: "[CatNo] IS NOT NULL");
+                column: "FormId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TeacherEvaluationResult_FormId",
@@ -523,15 +474,15 @@ namespace SemsApi.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "AuthorizedEmailDomains");
+
+            migrationBuilder.DropTable(
                 name: "GuidanceEvaluationLog",
                 schema: "Eval");
 
             migrationBuilder.DropTable(
                 name: "GuidanceEvaluationResult",
                 schema: "Eval");
-
-            migrationBuilder.DropTable(
-                name: "RefreshTokens");
 
             migrationBuilder.DropTable(
                 name: "Students");
@@ -553,10 +504,6 @@ namespace SemsApi.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
-
-            migrationBuilder.DropTable(
-                name: "EvaluationType",
-                schema: "Eval");
 
             migrationBuilder.DropTable(
                 name: "EvaluationForm",

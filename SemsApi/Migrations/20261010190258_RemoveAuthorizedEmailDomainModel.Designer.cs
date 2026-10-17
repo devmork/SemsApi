@@ -12,8 +12,8 @@ using SemsApi.Data;
 namespace SemsApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261017144956_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20261010190258_RemoveAuthorizedEmailDomainModel")]
+    partial class RemoveAuthorizedEmailDomainModel
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -170,27 +170,6 @@ namespace SemsApi.Migrations
                     b.ToTable("EvaluationForm", "Eval");
                 });
 
-            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationType", b =>
-                {
-                    b.Property<int>("EvaluationTypeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EvaluationTypeId"));
-
-                    b.Property<string>("EvaluationTypeName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("EvaluationTypeId");
-
-                    b.HasIndex("EvaluationTypeName")
-                        .IsUnique();
-
-                    b.ToTable("EvaluationType", "Eval");
-                });
-
             modelBuilder.Entity("SemsApi.Models.Eval.GuidanceEvaluationLog", b =>
                 {
                     b.Property<int>("Recno")
@@ -273,19 +252,16 @@ namespace SemsApi.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
-                    b.Property<int>("EvaluationTypeId")
-                        .HasColumnType("int");
+                    b.Property<string>("EvalType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int>("FormId")
                         .HasColumnType("int");
 
                     b.HasKey("Recno");
 
-                    b.HasIndex("EvaluationTypeId");
-
-                    b.HasIndex("FormId", "EvaluationTypeId", "CatNo")
-                        .IsUnique()
-                        .HasFilter("[CatNo] IS NOT NULL");
+                    b.HasIndex("FormId");
 
                     b.ToTable("TeacherEvaluationCategory", "Eval");
                 });
@@ -354,44 +330,6 @@ namespace SemsApi.Migrations
                     b.HasKey("Recno");
 
                     b.ToTable("TeacherEvaluationStrength", "Eval");
-                });
-
-            modelBuilder.Entity("SemsApi.Models.RefreshToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ReplacedByTokenHash")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Role", b =>
@@ -682,19 +620,11 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationCategory", b =>
                 {
-                    b.HasOne("SemsApi.Models.Eval.EvaluationType", "EvaluationType")
-                        .WithMany()
-                        .HasForeignKey("EvaluationTypeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("SemsApi.Models.Eval.EvaluationForm", "Form")
                         .WithMany("Categories")
                         .HasForeignKey("FormId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("EvaluationType");
 
                     b.Navigation("Form");
                 });
@@ -708,17 +638,6 @@ namespace SemsApi.Migrations
                         .IsRequired();
 
                     b.Navigation("Form");
-                });
-
-            modelBuilder.Entity("SemsApi.Models.RefreshToken", b =>
-                {
-                    b.HasOne("SemsApi.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Student", b =>
