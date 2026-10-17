@@ -1,12 +1,16 @@
 ﻿namespace SemsApi.Models.Eval
 {
     /// <summary>
-    /// A kind of evaluation (e.g. "Canteen Evaluation", "Teacher Evaluation - Grade 4 to 6").
-    /// Categories, forms and teacher comments reference it by EvaluationTypeId.
+    /// Represents a type of evaluation (e.g. "Teacher Evaluation", "Facility Evaluation").
+    /// Kept minimal per requirement: only an Id and a name.
     /// </summary>
     public class EvaluationType
     {
         public int EvaluationTypeId { get; set; }
+
+        /// <summary>
+        /// Display name of the evaluation type e.g. "Teacher Evaluation", "Facility Evaluation"
+        /// </summary>
         public string EvaluationTypeName { get; set; } = string.Empty;
     }
 }

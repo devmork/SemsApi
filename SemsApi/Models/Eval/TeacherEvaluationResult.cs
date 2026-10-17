@@ -1,17 +1,16 @@
 ﻿namespace SemsApi.Models.Eval
 {
-    /// <summary>
-    /// A question. Its evaluation type comes through its category.
-    /// </summary>
     public class TeacherEvaluationResult
     {
-        /// <summary>Primary key, database-generated. Unique across ALL categories (the "QuestionNumber").</summary>
-        public int QnNo { get; set; }
+        public int Recno { get; set; }
 
-        /// <summary>FK to TeacherEvaluationCategory.CatNo.</summary>
-        public int CatNo { get; set; }
-        public TeacherEvaluationCategory Category { get; set; } = null!;
+        //Mew foreign Key
+        public int FormId { get; set; }
+        public EvaluationForm Form { get; set; } = null!;
 
+        public string? EvalType { get; set; } //Keep it for now for backward compatibility, but we will use FormId to determine the form type in the future
+        public int? CatNo { get; set; }
+        public int? QnNo { get; set; }
         public string? QnName { get; set; }
     }
 }

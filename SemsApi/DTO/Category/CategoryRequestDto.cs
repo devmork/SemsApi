@@ -2,11 +2,12 @@
 {
     /// <summary>
     /// Request payload for creating or updating a TeacherEvaluationCategory.
-    /// CatNo is intentionally omitted - it is database-generated and unique across all evaluation types.
+    /// Recno is intentionally omitted — it is database-generated.
     /// </summary>
     public class CategoryRequestDto
     {
-        public int? EvaluationTypeId { get; set; }
+        public string? EvalType { get; set; }
+        public int? CatNo { get; set; }
         public string? CatRn { get; set; }
         public string? CatName { get; set; }
         public decimal? CatRate { get; set; }

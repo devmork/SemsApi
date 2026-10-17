@@ -1,7 +1,7 @@
-﻿namespace SemsApi.DTO
+﻿namespace SemsApi.DTO.EvaluationType
 {
     /// <summary>
-    /// Response shape for evaluation type CRUD operations.
+    /// Response shape for EvaluationType CRUD operations.
     /// </summary>
     public class EvaluationTypeResponseDto
     {

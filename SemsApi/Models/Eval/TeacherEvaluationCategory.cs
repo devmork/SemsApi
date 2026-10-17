@@ -2,12 +2,14 @@
 {
     public class TeacherEvaluationCategory
     {
-        /// <summary>Primary key, database-generated. Unique across ALL evaluation types (the "CategoryNumber").</summary>
-        public int CatNo { get; set; }
+        public int Recno { get; set; }
 
-        public int EvaluationTypeId { get; set; }
-        public EvaluationType EvaluationType { get; set; } = null!;
+        //New foreign key to EvaluationForm
+        public int FormId { get; set; }
+        public EvaluationForm Form { get; set; } = null!;
 
+        public string? EvalType { get; set; } //Keep it for now for backward compatibility, but we will use FormId to determine the form type in the future
+        public int? CatNo { get; set; }
         public string? CatRn { get; set; }
         public string? CatName { get; set; }
         public decimal? CatRate { get; set; }
