@@ -8,6 +8,9 @@ using SemsApi.Utilities;
 
 namespace SemsApi.Services
 {
+    /// <summary>
+    /// Category CRUD. A category belongs to one EvaluationType, and its CatNo is unique across all evaluation types.
+    /// </summary>
     public class CategoryService : ICategoryService
     {
         private readonly ApplicationDbContext _context;
@@ -17,35 +20,37 @@ namespace SemsApi.Services
             _context = context;
         }
 
-        public async Task<ActionResult<List<CategoryResponseDto>>> GetAllAsync(string? evalType = null, int? formId = null)
+        // ---------------------------------------------------------------------
+        // READ
+        // ---------------------------------------------------------------------
+
+        public async Task<ActionResult<List<CategoryResponseDto>>> GetAllAsync(int? evaluationTypeId = null)
         {
-            var query = _context.TeacherEvaluationCategories
-                .Include(c => c.EvaluationType)
-                .Include(c => c.Form)
-                .AsNoTracking()
-                .AsQueryable();
+            var query = _context.TeacherEvaluationCategories.AsNoTracking().AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(evalType))
-                query = query.Where(c => c.EvaluationType.EvaluationTypeName == evalType);
-
-            if (formId.HasValue)
-                query = query.Where(c => c.FormId == formId.Value);
+            if (evaluationTypeId.HasValue)
+                query = query.Where(c => c.EvaluationTypeId == evaluationTypeId.Value);
 
             var data = await query
                 .OrderBy(c => c.CatNo)
-                .Select(c => CategoryHelper.MapToResponse(c))
+                .Select(c => new CategoryResponseDto
+                {
+                    CatNo = c.CatNo,
+                    EvaluationTypeId = c.EvaluationTypeId,
+                    CatRn = c.CatRn,
+                    CatName = c.CatName,
+                    CatRate = c.CatRate
+                })
                 .ToListAsync();
 
             return new OkObjectResult(data);
         }
 
-        public async Task<ActionResult<CategoryResponseDto>> GetByIdAsync(int recno)
+        public async Task<ActionResult<CategoryResponseDto>> GetByIdAsync(int catNo)
         {
             var category = await _context.TeacherEvaluationCategories
-                .Include(c => c.EvaluationType)
-                .Include(c => c.Form)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Recno == recno);
+                .FirstOrDefaultAsync(c => c.CatNo == catNo);
 
             if (category is null)
                 return new NotFoundObjectResult(new { message = "Category not found." });
@@ -53,33 +58,25 @@ namespace SemsApi.Services
             return new OkObjectResult(CategoryHelper.MapToResponse(category));
         }
 
+        // ---------------------------------------------------------------------
+        // CREATE
+        // ---------------------------------------------------------------------
+
         public async Task<ActionResult> CreateAsync(CategoryRequestDto request)
         {
             var validationError = CategoryHelper.Validate(request);
             if (validationError is not null)
                 return new BadRequestObjectResult(new { message = validationError });
 
-            var formExists = await _context.EvaluationForms.AnyAsync(f => f.FormId == request.FormId!.Value);
-            if (!formExists)
-                return new NotFoundObjectResult(new { message = $"Evaluation form {request.FormId} not found." });
+            var typeExists = await _context.EvaluationTypes
+                .AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId);
 
-            var (evalTypeId, resolveError) = await ResolveEvaluationTypeAsync(request);
-            if (resolveError is not null)
-                return resolveError;
-
-            var duplicateExists = await _context.TeacherEvaluationCategories.AnyAsync(c =>
-                c.FormId == request.FormId!.Value &&
-                c.EvaluationTypeId == evalTypeId &&
-                c.CatNo == request.CatNo);
-
-            if (duplicateExists)
-                return new ConflictObjectResult(new { message = "A category with the same CatNo already exists for this form and evaluation type." });
+            if (!typeExists)
+                return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
             var entity = new TeacherEvaluationCategory
             {
-                FormId = request.FormId!.Value,
-                EvaluationTypeId = evalTypeId,
-                CatNo = request.CatNo,
+                EvaluationTypeId = request.EvaluationTypeId!.Value,
                 CatRn = request.CatRn!.Trim(),
                 CatName = request.CatName!.Trim(),
                 CatRate = Math.Round(request.CatRate!.Value, 2)
@@ -88,26 +85,23 @@ namespace SemsApi.Services
             _context.TeacherEvaluationCategories.Add(entity);
             await _context.SaveChangesAsync();
 
-            await _context.Entry(entity).Reference(e => e.EvaluationType).LoadAsync();
-            await _context.Entry(entity).Reference(e => e.Form).LoadAsync();
-
-            return new CreatedAtActionResult(
-                actionName: nameof(GetByIdAsync),
-                controllerName: null,
-                routeValues: new { recno = entity.Recno },
-                value: new
+            return new CreatedResult(
+                $"/api/evaluation/categories/{entity.CatNo}",
+                new
                 {
                     message = "Category created successfully.",
                     data = CategoryHelper.MapToResponse(entity)
                 });
         }
 
-        public async Task<ActionResult> UpdateAsync(int recno, CategoryRequestDto request)
+        // ---------------------------------------------------------------------
+        // UPDATE
+        // ---------------------------------------------------------------------
+
+        public async Task<ActionResult> UpdateAsync(int catNo, CategoryRequestDto request)
         {
             var category = await _context.TeacherEvaluationCategories
-                .Include(c => c.EvaluationType)
-                .Include(c => c.Form)
-                .FirstOrDefaultAsync(c => c.Recno == recno);
+                .FirstOrDefaultAsync(c => c.CatNo == catNo);
 
             if (category is null)
                 return new NotFoundObjectResult(new { message = "Category not found." });
@@ -116,34 +110,18 @@ namespace SemsApi.Services
             if (validationError is not null)
                 return new BadRequestObjectResult(new { message = validationError });
 
-            var formExists = await _context.EvaluationForms.AnyAsync(f => f.FormId == request.FormId!.Value);
-            if (!formExists)
-                return new NotFoundObjectResult(new { message = $"Evaluation form {request.FormId} not found." });
+            var typeExists = await _context.EvaluationTypes
+                .AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId);
 
-            var (evalTypeId, resolveError) = await ResolveEvaluationTypeAsync(request);
-            if (resolveError is not null)
-                return resolveError;
+            if (!typeExists)
+                return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
-            var duplicateExists = await _context.TeacherEvaluationCategories.AnyAsync(c =>
-                c.Recno != recno &&
-                c.FormId == request.FormId!.Value &&
-                c.EvaluationTypeId == evalTypeId &&
-                c.CatNo == request.CatNo);
-
-            if (duplicateExists)
-                return new ConflictObjectResult(new { message = "A category with the same CatNo already exists for this form and evaluation type." });
-
-            category.FormId = request.FormId!.Value;
-            category.EvaluationTypeId = evalTypeId;
-            category.CatNo = request.CatNo;
+            category.EvaluationTypeId = request.EvaluationTypeId!.Value;
             category.CatRn = request.CatRn!.Trim();
             category.CatName = request.CatName!.Trim();
             category.CatRate = Math.Round(request.CatRate!.Value, 2);
 
             await _context.SaveChangesAsync();
-
-            await _context.Entry(category).Reference(c => c.EvaluationType).LoadAsync();
-            await _context.Entry(category).Reference(c => c.Form).LoadAsync();
 
             return new OkObjectResult(new
             {
@@ -152,42 +130,33 @@ namespace SemsApi.Services
             });
         }
 
-        public async Task<ActionResult> DeleteAsync(int recno)
+        // ---------------------------------------------------------------------
+        // DELETE
+        // ---------------------------------------------------------------------
+
+        public async Task<ActionResult> DeleteAsync(int catNo)
         {
             var category = await _context.TeacherEvaluationCategories
-                .FirstOrDefaultAsync(c => c.Recno == recno);
+                .FirstOrDefaultAsync(c => c.CatNo == catNo);
 
             if (category is null)
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
             var hasDependentQuestions = await _context.TeacherEvaluationResults
-                .AnyAsync(q => q.FormId == category.FormId && q.CatNo == category.CatNo);
+                .AnyAsync(q => q.CatNo == catNo);
 
             if (hasDependentQuestions)
-                return new ConflictObjectResult(new { message = "Cannot delete this category because evaluation questions are associated with it." });
+            {
+                return new ConflictObjectResult(new
+                {
+                    message = "Cannot delete this category because evaluation questions are associated with it."
+                });
+            }
 
             _context.TeacherEvaluationCategories.Remove(category);
             await _context.SaveChangesAsync();
 
             return new NoContentResult();
-        }
-
-        private async Task<(int id, ActionResult? error)> ResolveEvaluationTypeAsync(CategoryRequestDto request)
-        {
-            if (request.EvaluationTypeId.HasValue)
-            {
-                var exists = await _context.EvaluationTypes.AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId.Value);
-                return exists ? (request.EvaluationTypeId.Value, null) : (0, new NotFoundObjectResult(new { message = $"Evaluation type {request.EvaluationTypeId} not found." }));
-            }
-
-            if (!string.IsNullOrWhiteSpace(request.EvaluationTypeName))
-            {
-                var name = request.EvaluationTypeName.Trim();
-                var type = await _context.EvaluationTypes.FirstOrDefaultAsync(t => t.EvaluationTypeName.ToLower() == name.ToLower());
-                return type is not null ? (type.EvaluationTypeId, null) : (0, new NotFoundObjectResult(new { message = $"Evaluation type '{name}' not found." }));
-            }
-
-            return (0, new BadRequestObjectResult(new { message = "Either EvaluationTypeId or EvaluationTypeName is required." }));
         }
     }
 }

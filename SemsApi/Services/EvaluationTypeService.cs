@@ -86,11 +86,9 @@ namespace SemsApi.Services
             _context.EvaluationTypes.Add(entity);
             await _context.SaveChangesAsync();
 
-            return new CreatedAtActionResult(
-                actionName: nameof(GetByIdAsync),
-                controllerName: null,
-                routeValues: new { id = entity.EvaluationTypeId },
-                value: new
+            return new CreatedResult(
+                $"/api/evaluation/types/{entity.EvaluationTypeId}",
+                new
                 {
                     message = "Evaluation type created successfully.",
                     data = EvaluationTypeHelper.MapToResponse(entity)
@@ -149,6 +147,19 @@ namespace SemsApi.Services
 
             if (entity is null)
                 return new NotFoundObjectResult(new { message = "Evaluation type not found." });
+
+            var inUse =
+                await _context.TeacherEvaluationCategories.AnyAsync(c => c.EvaluationTypeId == id)
+                || await _context.Forms.AnyAsync(f => f.EvaluationTypeId == id)
+                || await _context.TeacherEvaluationStrengths.AnyAsync(s => s.EvaluationTypeId == id);
+
+            if (inUse)
+            {
+                return new ConflictObjectResult(new
+                {
+                    message = "Cannot delete this evaluation type because categories, forms or comments are using it."
+                });
+            }
 
             _context.EvaluationTypes.Remove(entity);
             await _context.SaveChangesAsync();

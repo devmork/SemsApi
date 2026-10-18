@@ -3,39 +3,42 @@ using SemsApi.Models.Eval;
 
 namespace SemsApi.Utilities
 {
+    /// <summary>
+    /// Shared helper methods for TeacherEvaluationCategory CRUD operations.
+    /// </summary>
     public static class CategoryHelper
     {
+        /// <summary>
+        /// Individual category rate must stay within 0–100 (percent).
+        /// </summary>
         public const decimal MaxCatRate = 100.00m;
 
+        /// <summary>
+        /// Maps a TeacherEvaluationCategory entity to the response DTO.
+        /// </summary>
         public static CategoryResponseDto MapToResponse(TeacherEvaluationCategory c) =>
             new()
             {
-                Recno = c.Recno,
-                FormId = c.FormId,
-                FormCode = c.Form?.Code ?? string.Empty,
-                EvaluationTypeId = c.EvaluationTypeId,
-                EvaluationTypeName = c.EvaluationType?.EvaluationTypeName ?? string.Empty,
                 CatNo = c.CatNo,
+                EvaluationTypeId = c.EvaluationTypeId,
                 CatRn = c.CatRn,
                 CatName = c.CatName,
                 CatRate = c.CatRate
             };
 
+        /// <summary>
+        /// Server-side validation matching EF configuration and business rules.
+        /// Returns an error message string, or null when the request is valid.
+        /// </summary>
         public static string? Validate(CategoryRequestDto request)
         {
             if (request is null)
                 return "Request body is required.";
 
-            if (!request.FormId.HasValue || request.FormId.Value <= 0)
-                return "FormId is required and must be a positive number.";
-
-            if (!request.EvaluationTypeId.HasValue && string.IsNullOrWhiteSpace(request.EvaluationTypeName))
-                return "Either EvaluationTypeId or EvaluationTypeName is required.";
-
-            if (!request.CatNo.HasValue)
-                return "CatNo is required.";
-            if (request.CatNo.Value <= 0)
-                return "CatNo must be a positive number.";
+            if (!request.EvaluationTypeId.HasValue)
+                return "EvaluationTypeId is required.";
+            if (request.EvaluationTypeId.Value <= 0)
+                return "EvaluationTypeId must be a positive number.";
 
             if (string.IsNullOrWhiteSpace(request.CatRn))
                 return "CatRn is required.";

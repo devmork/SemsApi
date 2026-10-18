@@ -4,6 +4,11 @@ using SemsApi.Interfaces;
 
 namespace SemsApi.Controllers
 {
+    /// <summary>
+    /// Dedicated controller for TeacherEvaluationCategory CRUD operations.
+    /// All logic lives in ICategoryService; this controller only handles HTTP concerns.
+    /// A category belongs to one evaluation type, and its CatNo is unique across all evaluation types.
+    /// </summary>
     [ApiController]
     [Route("api/evaluation/categories")]
     public class CategoryController : ControllerBase
@@ -15,36 +20,60 @@ namespace SemsApi.Controllers
             _service = service;
         }
 
+        // ---------------------------------------------------------------------
+        // READ
+        // ---------------------------------------------------------------------
+
+        /// <summary>
+        /// List all categories. Optionally filter by evaluationTypeId.
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<List<CategoryResponseDto>>> GetAll(
-            [FromQuery] string? evalType = null,
-            [FromQuery] int? formId = null)
+            [FromQuery] int? evaluationTypeId = null)
         {
-            return await _service.GetAllAsync(evalType, formId);
+            return await _service.GetAllAsync(evaluationTypeId);
         }
 
-        [HttpGet("{recno:int}")]
-        public async Task<ActionResult<CategoryResponseDto>> GetById(int recno)
+        /// <summary>
+        /// Get a single category by CatNo.
+        /// </summary>
+        [HttpGet("{catNo:int}")]
+        public async Task<ActionResult<CategoryResponseDto>> GetById(int catNo)
         {
-            return await _service.GetByIdAsync(recno);
+            return await _service.GetByIdAsync(catNo);
         }
 
+        // ---------------------------------------------------------------------
+        // CREATE
+        // ---------------------------------------------------------------------
+
+        //[Authorize(Roles = "QA")]
         [HttpPost]
         public async Task<ActionResult> Create([FromBody] CategoryRequestDto request)
         {
             return await _service.CreateAsync(request);
         }
 
-        [HttpPut("{recno:int}")]
-        public async Task<ActionResult> Update(int recno, [FromBody] CategoryRequestDto request)
+        // ---------------------------------------------------------------------
+        // UPDATE
+        // ---------------------------------------------------------------------
+
+        //[Authorize(Roles = "QA")]
+        [HttpPut("{catNo:int}")]
+        public async Task<ActionResult> Update(int catNo, [FromBody] CategoryRequestDto request)
         {
-            return await _service.UpdateAsync(recno, request);
+            return await _service.UpdateAsync(catNo, request);
         }
 
-        [HttpDelete("{recno:int}")]
-        public async Task<ActionResult> Delete(int recno)
+        // ---------------------------------------------------------------------
+        // DELETE
+        // ---------------------------------------------------------------------
+
+        //[Authorize(Roles = "QA")]
+        [HttpDelete("{catNo:int}")]
+        public async Task<ActionResult> Delete(int catNo)
         {
-            return await _service.DeleteAsync(recno);
+            return await _service.DeleteAsync(catNo);
         }
     }
 }
