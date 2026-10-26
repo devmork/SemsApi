@@ -1,12 +1,11 @@
 ﻿namespace SemsApi.DTO.Form
 {
-    /// <summary>
-    /// The API shape of a form (list, create and update results).
-    /// Not to be confused with FormResponses, the table of student submissions.
-    /// </summary>
     public class FormDto
     {
         public int FormId { get; set; }
+        public string Code { get; set; } = string.Empty;
+        public string? GradeBand { get; set; }
+        public string TargetType { get; set; } = string.Empty;
         public int ProgramId { get; set; }
         public int EvaluationTypeId { get; set; }
         public string EvaluationTypeName { get; set; } = string.Empty;
