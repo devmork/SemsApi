@@ -48,6 +48,9 @@ namespace SemsApi.Services
                 .Select(f => new FormDto
                 {
                     FormId = f.FormId,
+                    Code = f.Code,
+                    GradeBand = f.GradeBand,
+                    TargetType = f.TargetType,
                     ProgramId = f.ProgramId,
                     EvaluationTypeId = f.EvaluationTypeId,
                     EvaluationTypeName = f.EvaluationType.EvaluationTypeName,
@@ -90,6 +93,9 @@ namespace SemsApi.Services
             var detail = new FormDetailDto
             {
                 FormId = form.FormId,
+                Code = form.Code,
+                GradeBand = form.GradeBand,
+                TargetType = form.TargetType,
                 ProgramId = form.ProgramId,
                 EvaluationTypeId = form.EvaluationTypeId,
                 EvaluationTypeName = form.EvaluationType.EvaluationTypeName,
@@ -144,14 +150,21 @@ namespace SemsApi.Services
             if (incompleteError is not null)
                 return new BadRequestObjectResult(new { message = incompleteError });
 
+            var normalizedCode = FormHelper.NormalizeCode(request.Code!);
+
+            var codeExists = await _context.Forms.AnyAsync(f => f.Code == normalizedCode);
+            if (codeExists)
+                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
+
             var entity = new Form
             {
+                Code = normalizedCode,
+                GradeBand = string.IsNullOrWhiteSpace(request.GradeBand) ? null : request.GradeBand.Trim(),
+                TargetType = FormHelper.NormalizeTargetType(request.TargetType),
                 ProgramId = request.ProgramId!.Value,
                 EvaluationTypeId = evaluationTypeId,
                 Title = request.Title!.Trim(),
-                Description = string.IsNullOrWhiteSpace(request.Description)
-                    ? null
-                    : request.Description.Trim(),
+                Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
                 CreatedBy = createdBy,
                 IsActive = request.IsActive ?? FormHelper.Active,
                 CreatedAt = DateTime.UtcNow
@@ -167,6 +180,21 @@ namespace SemsApi.Services
                     message = "Form created successfully.",
                     data = FormHelper.MapToDto(entity, evaluationType.EvaluationTypeName)
                 });
+        }
+
+        public async Task<ActionResult<FormDto>> GetByCodeAsync(string code, bool studentView = false)
+        {
+            var normalizedCode = FormHelper.NormalizeCode(code);
+
+            var form = await _context.Forms
+                .AsNoTracking()
+                .Include(f => f.EvaluationType)
+                .FirstOrDefaultAsync(f => f.Code == normalizedCode);
+
+            if (form is null || (studentView && form.IsActive != FormHelper.Active))
+                return new NotFoundObjectResult(new { message = "Form not found." });
+
+            return new OkObjectResult(FormHelper.MapToDto(form, form.EvaluationType.EvaluationTypeName));
         }
 
         // ---------------------------------------------------------------------
@@ -205,13 +233,20 @@ namespace SemsApi.Services
                 if (incompleteError is not null)
                     return new BadRequestObjectResult(new { message = incompleteError });
             }
+            var normalizedCode = FormHelper.NormalizeCode(request.Code!);
 
+            var codeExists = await _context.Forms
+                .AnyAsync(f => f.Code == normalizedCode && f.FormId != formId);
+            if (codeExists)
+                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
+
+            form.Code = normalizedCode;
+            form.GradeBand = string.IsNullOrWhiteSpace(request.GradeBand) ? null : request.GradeBand.Trim();
+            form.TargetType = FormHelper.NormalizeTargetType(request.TargetType);
             form.ProgramId = request.ProgramId!.Value;
             form.EvaluationTypeId = evaluationTypeId;
             form.Title = request.Title!.Trim();
-            form.Description = string.IsNullOrWhiteSpace(request.Description)
-                ? null
-                : request.Description.Trim();
+            form.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
 
             if (request.IsActive.HasValue)
                 form.IsActive = request.IsActive.Value;
