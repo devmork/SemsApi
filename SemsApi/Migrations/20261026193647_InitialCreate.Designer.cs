@@ -12,7 +12,7 @@ using SemsApi.Data;
 namespace SemsApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261017144956_InitialCreate")]
+    [Migration("20261026193647_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -128,48 +128,6 @@ namespace SemsApi.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
-                {
-                    b.Property<int>("FormId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FormId"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("GradeBand")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("TargetType")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.HasKey("FormId");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("EvaluationForm", "Eval");
-                });
-
             modelBuilder.Entity("SemsApi.Models.Eval.EvaluationType", b =>
                 {
                     b.Property<int>("EvaluationTypeId")
@@ -189,6 +147,66 @@ namespace SemsApi.Migrations
                         .IsUnique();
 
                     b.ToTable("EvaluationType", "Eval");
+                });
+
+            modelBuilder.Entity("SemsApi.Models.Eval.Form", b =>
+                {
+                    b.Property<int>("FormId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FormId"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("EvaluationTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GradeBand")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("IsActive")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProgramId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("FormId");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("EvaluationTypeId");
+
+                    b.HasIndex("ProgramId");
+
+                    b.ToTable("Forms", "Eval");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.GuidanceEvaluationLog", b =>
@@ -253,18 +271,15 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationCategory", b =>
                 {
-                    b.Property<int>("Recno")
+                    b.Property<int>("CatNo")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Recno"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CatNo"));
 
                     b.Property<string>("CatName")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
-
-                    b.Property<int?>("CatNo")
-                        .HasColumnType("int");
 
                     b.Property<decimal?>("CatRate")
                         .HasColumnType("decimal(18,2)");
@@ -276,47 +291,30 @@ namespace SemsApi.Migrations
                     b.Property<int>("EvaluationTypeId")
                         .HasColumnType("int");
 
-                    b.Property<int>("FormId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Recno");
+                    b.HasKey("CatNo");
 
                     b.HasIndex("EvaluationTypeId");
-
-                    b.HasIndex("FormId", "EvaluationTypeId", "CatNo")
-                        .IsUnique()
-                        .HasFilter("[CatNo] IS NOT NULL");
 
                     b.ToTable("TeacherEvaluationCategory", "Eval");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationResult", b =>
                 {
-                    b.Property<int>("Recno")
+                    b.Property<int>("QnNo")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Recno"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("QnNo"));
 
-                    b.Property<int?>("CatNo")
-                        .HasColumnType("int");
-
-                    b.Property<string>("EvalType")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("FormId")
+                    b.Property<int>("CatNo")
                         .HasColumnType("int");
 
                     b.Property<string>("QnName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("QnNo")
-                        .HasColumnType("int");
+                    b.HasKey("QnNo");
 
-                    b.HasKey("Recno");
-
-                    b.HasIndex("FormId");
+                    b.HasIndex("CatNo");
 
                     b.ToTable("TeacherEvaluationResult", "Eval");
                 });
@@ -332,9 +330,8 @@ namespace SemsApi.Migrations
                     b.Property<string>("CommentName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("EvalType")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int>("EvaluationTypeId")
+                        .HasColumnType("int");
 
                     b.Property<string>("StudentId")
                         .HasMaxLength(50)
@@ -352,6 +349,8 @@ namespace SemsApi.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Recno");
+
+                    b.HasIndex("EvaluationTypeId");
 
                     b.ToTable("TeacherEvaluationStrength", "Eval");
                 });
@@ -680,6 +679,25 @@ namespace SemsApi.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SemsApi.Models.Eval.Form", b =>
+                {
+                    b.HasOne("SemsApi.Models.User", "Creator")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SemsApi.Models.Eval.EvaluationType", "EvaluationType")
+                        .WithMany()
+                        .HasForeignKey("EvaluationTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Creator");
+
+                    b.Navigation("EvaluationType");
+                });
+
             modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationCategory", b =>
                 {
                     b.HasOne("SemsApi.Models.Eval.EvaluationType", "EvaluationType")
@@ -688,26 +706,29 @@ namespace SemsApi.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("SemsApi.Models.Eval.EvaluationForm", "Form")
-                        .WithMany("Categories")
-                        .HasForeignKey("FormId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.Navigation("EvaluationType");
-
-                    b.Navigation("Form");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationResult", b =>
                 {
-                    b.HasOne("SemsApi.Models.Eval.EvaluationForm", "Form")
+                    b.HasOne("SemsApi.Models.Eval.TeacherEvaluationCategory", "Category")
                         .WithMany()
-                        .HasForeignKey("FormId")
+                        .HasForeignKey("CatNo")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Form");
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("SemsApi.Models.Eval.TeacherEvaluationStrength", b =>
+                {
+                    b.HasOne("SemsApi.Models.Eval.EvaluationType", "EvaluationType")
+                        .WithMany()
+                        .HasForeignKey("EvaluationTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("EvaluationType");
                 });
 
             modelBuilder.Entity("SemsApi.Models.RefreshToken", b =>
@@ -741,11 +762,6 @@ namespace SemsApi.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
-                {
-                    b.Navigation("Categories");
                 });
 
             modelBuilder.Entity("SemsApi.Models.User", b =>
