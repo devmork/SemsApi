@@ -3,31 +3,30 @@ using SemsApi.Models.Eval;
 
 namespace SemsApi.Utilities
 {
-    /// <summary>
-    /// Shared helper methods for Form CRUD operations.
-    /// </summary>
     public static class FormHelper
     {
+        public const int MaxCodeLength = 20;
+        public const int MaxGradeBandLength = 30;
+        public const int MaxTargetTypeLength = 30;
         public const int MaxTitleLength = 200;
         public const int MaxDescriptionLength = 1000;
 
-        /// <summary>
-        /// Program ids: 0 = all students (canteen, library, guidance, etc.),
-        /// 1 = Preschool to Grade 3, 2 = Grade 4 to 6, 3 = JHS to SHS.
-        /// </summary>
         public const int MinProgramId = 0;
         public const int MaxProgramId = 3;
 
         public const int Inactive = 0;
         public const int Active = 1;
 
-        /// <summary>
-        /// Maps a Form entity to its DTO.
-        /// </summary>
+        public const string DefaultTargetType = "SubjectTeacher";
+        public static readonly string[] AllowedTargetTypes = { "SubjectTeacher", "Facility" };
+
         public static FormDto MapToDto(Form f, string evaluationTypeName) =>
             new()
             {
                 FormId = f.FormId,
+                Code = f.Code,
+                GradeBand = f.GradeBand,
+                TargetType = f.TargetType,
                 ProgramId = f.ProgramId,
                 EvaluationTypeId = f.EvaluationTypeId,
                 EvaluationTypeName = evaluationTypeName,
@@ -38,14 +37,22 @@ namespace SemsApi.Utilities
                 CreatedAt = f.CreatedAt
             };
 
-        /// <summary>
-        /// Server-side validation matching EF configuration and business rules.
-        /// Returns an error message string, or null when the request is valid.
-        /// </summary>
         public static string? Validate(FormRequestDto request)
         {
             if (request is null)
                 return "Request body is required.";
+
+            if (string.IsNullOrWhiteSpace(request.Code))
+                return "Code is required.";
+            if (request.Code.Trim().Length > MaxCodeLength)
+                return $"Code must not exceed {MaxCodeLength} characters.";
+
+            if (request.GradeBand is not null && request.GradeBand.Trim().Length > MaxGradeBandLength)
+                return $"GradeBand must not exceed {MaxGradeBandLength} characters.";
+
+            if (!string.IsNullOrWhiteSpace(request.TargetType) &&
+                !AllowedTargetTypes.Contains(request.TargetType.Trim(), StringComparer.OrdinalIgnoreCase))
+                return "TargetType must be either 'SubjectTeacher' or 'Facility'.";
 
             if (!request.ProgramId.HasValue)
                 return "ProgramId is required.";
@@ -71,6 +78,20 @@ namespace SemsApi.Utilities
                 return "IsActive must be 0 or 1.";
 
             return null;
+        }
+
+        public static string NormalizeCode(string code) => code.Trim().ToUpper();
+
+        public static string NormalizeTargetType(string? targetType)
+        {
+            if (string.IsNullOrWhiteSpace(targetType))
+                return DefaultTargetType;
+
+            var trimmed = targetType.Trim();
+            var match = AllowedTargetTypes
+                .FirstOrDefault(t => string.Equals(t, trimmed, StringComparison.OrdinalIgnoreCase));
+
+            return match ?? DefaultTargetType;
         }
     }
 }
