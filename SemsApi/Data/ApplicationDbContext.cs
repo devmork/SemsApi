@@ -617,6 +617,13 @@ namespace SemsApi.Data
                 e.ToTable("Forms", "Eval");
                 e.HasKey(x => x.FormId);
                 e.Property(x => x.FormId).ValueGeneratedOnAdd();
+
+                e.Property(x => x.Code).IsRequired().HasMaxLength(20);
+                e.HasIndex(x => x.Code).IsUnique();
+
+                e.Property(x => x.GradeBand).HasMaxLength(30);
+                e.Property(x => x.TargetType).IsRequired().HasMaxLength(30);
+
                 e.Property(x => x.Title).IsRequired().HasMaxLength(200);
                 e.Property(x => x.Description).HasMaxLength(1000);
                 e.HasIndex(x => x.ProgramId);
