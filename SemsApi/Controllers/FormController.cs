@@ -91,5 +91,14 @@ namespace SemsApi.Controllers
         {
             return await _service.DeleteAsync(formId);
         }
+
+        /// <summary>
+        /// Get a single form by its Code (e.g. PRE-G3, CAFETERIA, LIBRARY).
+        /// </summary>
+        [HttpGet("by-code/{code}")]
+        public async Task<ActionResult<FormDto>> GetByCode(string code)
+        {
+            return await _service.GetByCodeAsync(code, studentView: User.IsInRole("Student"));
+        }
     }
 }
