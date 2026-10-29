@@ -1,370 +1,171 @@
 ﻿using Azure;
 using Google.Apis.Auth;
+using Google.Apis.Auth.OAuth2.Responses;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SemsApi.Configuration;
 using SemsApi.Data;
-using SemsApi.DTO.Auth;
+using SemsApi.DTO.Authentication;
 using SemsApi.DTO.Student;
 using SemsApi.DTO.Teacher;
 using SemsApi.DTO.User;
+using SemsApi.Exceptions;
 using SemsApi.Interfaces;
 using SemsApi.Models;
+using SemsApi.Utilities;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using static System.Net.Mime.MediaTypeNames;
 using static System.Net.WebRequestMethods;
 
 namespace SemsApi.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly ApplicationDbContext _context;
-        private readonly UserManager<User> _userManager;
-        private readonly RoleManager<Role> _roleManager;
-        private readonly IJwtService _jwtService;
-        private readonly AuthOptions _authOptions;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly GoogleOptions _options;
-        private static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(7);
-
-        public AuthService(
-                ApplicationDbContext context,
-                UserManager<User> userManager,
-                RoleManager<Role> roleManager,
-                IJwtService jwtService,
-                IOptions<AuthOptions> authOptions,
-                IOptions<GoogleOptions> options,
-                IHttpContextAccessor httpContextAccessor)
+        private readonly ITokenService _tokenService;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ApplicationDbContext _dbContext;
+        public AuthService(ITokenService tokenService, UserManager<ApplicationUser> userManager, ApplicationDbContext dbContext)
         {
-            _context = context;
+            _tokenService = tokenService;
             _userManager = userManager;
-            _roleManager = roleManager;
-            _jwtService = jwtService;
-            _authOptions = authOptions.Value;
-            _options = options.Value;
-            _httpContextAccessor = httpContextAccessor;
+            _dbContext = dbContext;
         }
 
-        public async Task<ActionResult<UserProfileDto>> GetUserProfileAsync()
+        public async Task<AuthTokenResponse> IssueTokensAsync(ApplicationUser user, CancellationToken ct = default)
         {
-            var userId = GetCurrentUserId();
-            if (userId is null)
-                return new UnauthorizedResult();
-
-            var user = await _userManager.Users
-                .FirstOrDefaultAsync(u => u.Id == userId.Value && u.Status == "Active");
-
-            if (user is null)
-                return new UnauthorizedResult();
-
             var roles = await _userManager.GetRolesAsync(user);
+            var (jwt, jwtExp) = _tokenService.GenerateAccessToken(user, roles);
+            var refresh = _tokenService.GenerateRefreshToken();
 
-            return new UserProfileDto
+            _dbContext.RefreshTokens.Add(new RefreshToken
             {
                 UserId = user.Id,
-                Email = user.Email ?? string.Empty,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Role = roles.FirstOrDefault() ?? "Unknown"
-            };
+                TokenHash = refresh.Hash,
+                ExpiresAtUtc = refresh.ExpiresAtUtc,
+            });
+            await _dbContext.SaveChangesAsync(ct);
+            return new AuthTokenResponse(jwt, jwtExp, refresh.Token, refresh.ExpiresAtUtc);
+
         }
 
-        public async Task<ActionResult<LoginResponseDto>> ContinueWithGoogleAsync(ContinueWithGoogleRequest request)
+        public async Task LogoutAsync(string? refreshToken, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(request.Code))
-                return LoginFailure("Authorization code is required.",
-                    "MISSING_CODE", StatusCodes.Status400BadRequest);
-
-            var tokenResponse = await ExchangeGoogleAuthCodeForTokensAsync(request.Code, request.CodeVerifier!);
-            if (tokenResponse is null || string.IsNullOrEmpty(tokenResponse.IdToken))
-                return LoginFailure("Failed to exchange authorization code.",
-                    "TOKEN_EXCHANGE_FAILED", StatusCodes.Status401Unauthorized);
-
-            var payload = await ValidateGoogleIdTokenAsync(tokenResponse.IdToken);
-            if (payload is null)
-                return LoginFailure("Invalid ID token.",
-                    "INVALID_ID_TOKEN", StatusCodes.Status401Unauthorized);
-
-            return await ProcessGoogleLoginAsync(payload);
+            if (string.IsNullOrEmpty(refreshToken)) return;
+            var hash = _tokenService.Hash(refreshToken);
+            var stored = await _dbContext.RefreshTokens.SingleOrDefaultAsync(t => t.TokenHash == hash && t.RevokedAtUtc == null, ct);
+            if (stored is null) return;
+            stored.RevokedAtUtc = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync(ct);
         }
 
-        public async Task LogoutAsync()
+        public async Task<AuthTokenResponse> RefreshTokenAsync(string? refreshToken, CancellationToken ct = default)
         {
-            var ctx = _httpContextAccessor.HttpContext;
-            if (ctx is null) return;
+            const string invalid = "Invalid or expired refresh token";
+            if (string.IsNullOrEmpty(refreshToken)) throw new RefreshTokenException("Missing refresh token");
 
-            if (ctx.Request.Cookies.TryGetValue("refresh_token", out var raw) && !string.IsNullOrEmpty(raw))
+            var hash = _tokenService.Hash(refreshToken);
+            var stored = await _dbContext.RefreshTokens.Include(t => t.User)
+                                .SingleOrDefaultAsync(t => t.TokenHash == hash, ct)
+                                ?? throw new RefreshTokenException(invalid);
+
+            if (stored.IsRevoked)
             {
-                var hash = Hash(raw);
-                var stored = await _context.RefreshTokens
-                    .FirstOrDefaultAsync(t => t.TokenHash == hash && t.RevokedAt == null);
-                if (stored is not null)
-                {
-                    stored.RevokedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
-                }
+                await _dbContext.RefreshTokens.Where(t => t.UserId == stored.UserId && t.RevokedAtUtc == null)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAtUtc, DateTime.UtcNow));
+                throw new RefreshTokenException(invalid);
             }
+            if (stored.IsExpired || stored.User.Status != UserStatus.Active)
+                throw new RefreshTokenException(invalid);
 
-            ctx.Response.Cookies.Delete("refresh_token", new CookieOptions
+            var roles = await _userManager.GetRolesAsync(stored.User);
+            var (jwt, jwtExp) = _tokenService.GenerateAccessToken(stored.User, roles);
+            var next = _tokenService.GenerateRefreshToken();
+
+            stored.RevokedAtUtc = DateTime.UtcNow;
+            stored.ReplacedByTokenHash = next.Hash;
+
+            _dbContext.RefreshTokens.Add(new RefreshToken
             {
-                Path = "/api/auth",
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Lax
+                UserId = stored.UserId,
+                TokenHash = next.Hash,
+                ExpiresAtUtc = next.ExpiresAtUtc,
             });
+            await _dbContext.SaveChangesAsync(ct);
+            return new AuthTokenResponse(jwt, jwtExp, next.Token, next.ExpiresAtUtc);
         }
 
-        public Task SetRefreshTokenCookieAsync(string refreshToken)
+        public async Task<GoogleSignInResponse> SignInWithGoogleAsync(ClaimsPrincipal? principal)
         {
-            var ctx = _httpContextAccessor.HttpContext;
-            ctx?.Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Lax,
-                Path = "/api/auth",
-                MaxAge = TimeSpan.FromDays(7)
-            });
+            var email = principal?.FindFirstValue(ClaimTypes.Email)?.Trim().ToLowerInvariant();
+            var googleSub = principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (principal is null || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(googleSub))
+                throw new SignInRejectedException(SignInErrorCodes.GoogleAuthFailed);
 
-            return Task.CompletedTask;
-        }
+            if (!string.Equals(principal.FindFirstValue("email_verified"), "true", StringComparison.OrdinalIgnoreCase))
+                throw new SignInRejectedException(SignInErrorCodes.EmailNotVerified);
 
-        public async Task<GoogleJsonWebSignature.Payload?> ValidateGoogleIdTokenAsync(string idToken)
-        {
-            try
+            var first = principal!.FindFirstValue(ClaimTypes.GivenName);
+            var last = principal!.FindFirstValue(ClaimTypes.Surname);
+            var picture = principal!.FindFirstValue("urn:google:picture");
+
+            // Step 5: existing account? Google "sub" first, then email
+            var isNew = false;
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.GoogleSubjectId == googleSub) ?? await _userManager.FindByEmailAsync(email!);
+
+
+            if (user is null)
             {
-                var settings = new GoogleJsonWebSignature.ValidationSettings
+                // Step 6: register
+                user = new ApplicationUser
                 {
-                    Audience = new[] { _options.ClientId }
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = true,
+                    GoogleSubjectId = googleSub!,
+                    FirstName = first ?? email!.Split('@')[0],
+                    LastName = last ?? string.Empty,
+                    PictureUrl = picture,
+                    Status = UserStatus.Active,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    LastLoginAt = DateTime.UtcNow
                 };
-                return await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
-            }
-            catch (InvalidJwtException)
-            {
-                return null;
-            }
-        }
+                var created = await _userManager.CreateAsync(user);
+                if (!created.Succeeded)
+                    throw new RegistrationFailedException(created.Errors.Select(e => e.Description));
 
-        public async Task<GoogleTokenResponse?> ExchangeGoogleAuthCodeForTokensAsync(string code, string codeVerifier)
-        {
-            var tokenEndpoint = "https://oauth2.googleapis.com/token";
-
-            var parameters = new List<KeyValuePair<string, string>>
-            {
-                new("code", code),
-                new("client_id", _options.ClientId),
-                new("client_secret", _options.ClientSecret),
-                new("redirect_uri", _options.RedirectUri),
-                new("grant_type", "authorization_code")
-            };
-
-            if (!string.IsNullOrWhiteSpace(codeVerifier))
-                parameters.Add(new("code_verifier", codeVerifier));
-
-            using var client = new HttpClient();
-            var response = await client.PostAsync(tokenEndpoint, new FormUrlEncodedContent(parameters));
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                return null;
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var tokenResponse = JsonSerializer.Deserialize<GoogleTokenResponse>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            return tokenResponse;
-
-        }
-
-        private async Task<ActionResult<LoginResponseDto>> ProcessGoogleLoginAsync(
-            GoogleJsonWebSignature.Payload payload)
-        {
-            if (!payload.EmailVerified)
-                return LoginFailure("Google email is not verified.",
-                    "EMAIL_NOT_VERIFIED", StatusCodes.Status401Unauthorized);
-
-            var domain = payload.Email.Split('@').Last();
-            var domainAuthorized = _authOptions.AuthorizedDomains
-                .Any(d => string.Equals(d, domain, StringComparison.OrdinalIgnoreCase));
-
-            if (!domainAuthorized)
-                return LoginFailure("This email domain is not authorized for SEMS.",
-                    "DOMAIN_NOT_AUTHORIZED", StatusCodes.Status403Forbidden);
-
-            var (user, errorCode) = await GetOrCreateUserAsync(payload);
-            if (user is null)
-                return LoginFailure("Unable to process user account.",
-                    errorCode ?? "USER_PROCESSING_FAILED", StatusCodes.Status403Forbidden);
-
-            if (user.Status != "Active")
-                return LoginFailure("This account is disabled.",
-                    "ACCOUNT_DISABLED", StatusCodes.Status403Forbidden);
-
-            user.LastLoginAt = DateTime.UtcNow;
-            await _userManager.UpdateAsync(user);
-
-            var raw = CreateRefreshToken(user);
-            await _context.SaveChangesAsync();
-            await SetRefreshTokenCookieAsync(raw);
-
-            return await BuildLoginResponseAsync(user);
-        }
-
-        private async Task<(User? user, string? errorCode)> GetOrCreateUserAsync(
-           GoogleJsonWebSignature.Payload payload)
-        {
-            var user = await _userManager.Users
-                .FirstOrDefaultAsync(u => u.GoogleSubjectId == payload.Subject);
-
-            if (user is not null)
-                return (user, null);
-
-            user = new User
-            {
-                UserName = payload.Email,
-                Email = payload.Email,
-                EmailConfirmed = payload.EmailVerified,
-                GoogleSubjectId = payload.Subject,
-                FirstName = payload.GivenName ?? "Unknown",
-                LastName = payload.FamilyName ?? "Unknown",
-                Status = "Active",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            var createResult = await _userManager.CreateAsync(user);
-            if (!createResult.Succeeded)
-                return (null, "USER_CREATION_FAILED");
-
-            if (!await _roleManager.RoleExistsAsync("Student"))
-                return (null, "ROLE_NOT_FOUND");
-
-            await _userManager.AddToRoleAsync(user, "Student");
-            return (user, null);
-        }
-
-        private int? GetCurrentUserId()
-        {
-            var sub = _httpContextAccessor.HttpContext?.User
-                .FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-            return int.TryParse(sub, out var id) ? id : null;
-        }
-
-        private static ActionResult<LoginResponseDto> LoginFailure(
-            string message, string errorCode, int statusCode)
-        {
-            var dto = new LoginResponseDto
-            {
-                Success = false,
-                Message = message,
-                ErrorCode = errorCode
-            };
-
-            return new ObjectResult(dto) { StatusCode = statusCode };
-        }
-
-
-        private static string Hash(string token) =>
-                Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
-
-        // Adds a new token row to the context (does not save) and returns the raw value
-        private string CreateRefreshToken(User user)
-        {
-            var raw = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(64));
-            _context.RefreshTokens.Add(new RefreshToken
-            {
-                UserId = user.Id,
-                TokenHash = Hash(raw),
-                ExpiresAt = DateTime.UtcNow.Add(RefreshTokenLifetime)
-            });
-            return raw;
-        }
-
-        public async Task<ActionResult<LoginResponseDto>> RefreshAsync(string refreshToken)
-        {
-            var hash = Hash(refreshToken);
-            var stored = await _context.RefreshTokens
-                .Include(t => t.User)
-                .FirstOrDefaultAsync(t => t.TokenHash == hash);
-
-            if (stored is null)
-                return LoginFailure("Invalid refresh token.", "INVALID_REFRESH_TOKEN",
-                    StatusCodes.Status401Unauthorized);
-
-            // A revoked token being used again means it may have been stolen: kill the whole chain
-            if (stored.RevokedAt is not null)
-            {
-                var active = await _context.RefreshTokens
-                    .Where(t => t.UserId == stored.UserId && t.RevokedAt == null)
-                    .ToListAsync();
-                active.ForEach(t => t.RevokedAt = DateTime.UtcNow);
-                await _context.SaveChangesAsync();
-
-                return LoginFailure("Refresh token was already used.", "REFRESH_TOKEN_REUSED",
-                    StatusCodes.Status401Unauthorized);
-            }
-
-            if (stored.ExpiresAt <= DateTime.UtcNow)
-                return LoginFailure("Refresh token expired.", "REFRESH_TOKEN_EXPIRED",
-                    StatusCodes.Status401Unauthorized);
-
-            var user = stored.User;
-            if (user.Status != "Active")
-                return LoginFailure("This account is disabled.", "ACCOUNT_DISABLED",
-                    StatusCodes.Status403Forbidden);
-
-            // Rotate: revoke old, create new, one SaveChanges
-            var newRaw = CreateRefreshToken(user);
-            stored.RevokedAt = DateTime.UtcNow;
-            stored.ReplacedByTokenHash = Hash(newRaw);
-            await _context.SaveChangesAsync();
-
-            await SetRefreshTokenCookieAsync(newRaw);
-            return await BuildLoginResponseAsync(user);
-        }
-
-        private async Task<LoginResponseDto> BuildLoginResponseAsync(User user)
-        {
-            var roles = await _userManager.GetRolesAsync(user);
-
-            await _context.Entry(user).Reference(u => u.Student).LoadAsync();
-            await _context.Entry(user).Reference(u => u.Teacher).LoadAsync();
-
-            return new LoginResponseDto
-            {
-                Success = true,
-                Message = "Login successful.",
-                Token = _jwtService.GenerateToken(user, roles),
-                User = new UserProfileDto
+                var role = await _userManager.AddToRoleAsync(user, "Student");
+                if (!role.Succeeded)
                 {
-                    UserId = user.Id,
-                    Email = user.Email ?? string.Empty,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    Role = roles.FirstOrDefault() ?? "Unknown"
-                },
-                Student = user.Student is null ? null : new StudentDto
-                {
-                    StudentId = user.Student.StudentId,
-                    StudentNumber = user.Student.StudentNumber,
-                    GradeLevel = user.Student.GradeLevel,
-                    Section = user.Student.Section
-                },
-                Teacher = user.Teacher is null ? null : new TeacherDto
-                {
-                    TeacherId = user.Teacher.TeacherId,
-                    EmployeeNumber = user.Teacher.EmployeeNumber,
-                    Department = user.Teacher.Department
+                    await _userManager.DeleteAsync(user); 
+                    throw new RegistrationFailedException(role.Errors.Select(e => e.Description));
                 }
-            };
+                isNew = true;
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(user.GoogleSubjectId))
+                    user.GoogleSubjectId = googleSub;                       
+                else if (user.GoogleSubjectId != googleSub)
+                    throw new SignInRejectedException(SignInErrorCodes.AccountConflict);
+
+                if (user.Status != UserStatus.Active)
+                    throw new SignInRejectedException(SignInErrorCodes.AccountInactive);
+
+                user.LastLoginAt = DateTime.UtcNow;
+                user.UpdatedAt = DateTime.UtcNow;
+                if (!string.IsNullOrEmpty(picture)) user.PictureUrl = picture;
+                await _userManager.UpdateAsync(user);
+            }
+
+            return new GoogleSignInResponse(user, isNew);
         }
     }
 }
