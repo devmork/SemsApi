@@ -18,6 +18,7 @@ using System.Text.Json;
 var builder = WebApplication.CreateBuilder(args);
 
 
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
@@ -93,6 +94,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
+              .AllowCredentials()
+              .AllowAnyMethod()
               .AllowCredentials();
     });
 });
@@ -124,6 +127,12 @@ builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
+    await RoleSeeder.SeedAsync(roleManager);
+}
 
 using (var scope = app.Services.CreateScope())
 {

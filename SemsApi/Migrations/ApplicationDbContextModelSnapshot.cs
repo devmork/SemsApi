@@ -165,8 +165,11 @@ namespace SemsApi.Migrations
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -264,12 +267,19 @@ namespace SemsApi.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.HasKey("FormId");
+                    b.HasKey("FormId");
 
+                    b.HasIndex("Code");
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.ToTable("EvaluationForm", "Eval");
                     b.ToTable("EvaluationForm", "Eval");
                 });
 
@@ -362,7 +372,12 @@ namespace SemsApi.Migrations
                     b.Property<int>("FormId")
                         .HasColumnType("int");
 
+                    b.Property<int>("FormId")
+                        .HasColumnType("int");
+
                     b.HasKey("Recno");
+
+                    b.HasIndex("FormId");
 
                     b.HasIndex("FormId");
 
@@ -387,6 +402,9 @@ namespace SemsApi.Migrations
                     b.Property<int>("FormId")
                         .HasColumnType("int");
 
+                    b.Property<int>("FormId")
+                        .HasColumnType("int");
+
                     b.Property<string>("QnName")
                         .HasColumnType("nvarchar(max)");
 
@@ -394,6 +412,8 @@ namespace SemsApi.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Recno");
+
+                    b.HasIndex("FormId");
 
                     b.HasIndex("FormId");
 

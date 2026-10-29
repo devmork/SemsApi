@@ -29,6 +29,13 @@ namespace SemsApi.Data
         {
             base.OnModelCreating(modelBuilder); // Important! Creates Identity tables
 
+            modelBuilder.Entity<RefreshToken>(e =>
+            {
+                e.HasIndex(t => t.TokenHash).IsUnique();
+                e.Property(t => t.TokenHash).HasMaxLength(64);
+                e.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId);
+            });
+
             // =====================================================
             // USER (IdentityUser)
             // =====================================================
