@@ -18,9 +18,9 @@ namespace SemsApi.Seeders
             },
             new Role
             {
-                Name = "Teacher",
-                NormalizedName = "TEACHER",
-                Description = "Classroom Teacher",
+                Name = "Qa",
+                NormalizedName = "QA",
+                Description = "Quality Assurance",
                 IsActive = true,
                 SortOrder = 2
             },
