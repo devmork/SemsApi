@@ -8,10 +8,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SemsApi.Data;
+using SemsApi.DTO.ApplicationUser;
 using SemsApi.DTO.Authentication;
 using SemsApi.DTO.Student;
 using SemsApi.DTO.Teacher;
-using SemsApi.DTO.User;
 using SemsApi.Exceptions;
 using SemsApi.Interfaces;
 using SemsApi.Models;
@@ -36,6 +36,25 @@ namespace SemsApi.Services
             _tokenService = tokenService;
             _userManager = userManager;
             _dbContext = dbContext;
+        }
+
+        public async Task<UserResponse?> GetCurrentUserAsync(int userId, CancellationToken ct = default)
+        {
+            var user = await _userManager.Users
+                         .AsNoTracking()
+                         .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+            if (user is null || user.Status != UserStatus.Active)
+                return null;
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return new UserResponse(
+                user.Id,
+                user.Email!,
+                user.FirstName,
+                user.LastName,
+                user.PictureUrl,
+                roles.FirstOrDefault());
         }
 
         public async Task<AuthTokenResponse> IssueTokensAsync(ApplicationUser user, CancellationToken ct = default)
