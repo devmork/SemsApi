@@ -1,10 +1,14 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SemsApi.Exceptions;
 using SemsApi.Interfaces;
+using SemsApi.Models;
 using SemsApi.Utilities;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace SemsApi.Controllers
 {
@@ -34,7 +38,7 @@ namespace SemsApi.Controllers
             try
             {
                 var result = await authService.SignInWithGoogleAsync(external.Principal);
-                var tokens = await authService.IssueTokensAsync(result.User, ct);
+                var tokens = await authService.IssueTokensAsync(result.applicationUser, ct);
                 CookiesUtility.Append(Response, tokens);
 
                 external.Properties!.Items.TryGetValue("returnUrl", out var returnUrl);
@@ -48,6 +52,20 @@ namespace SemsApi.Controllers
             {
                 return Redirect(RedirectUtility.LoginErrorUrl(_frontendUrl, SignInErrorCodes.GoogleAuthFailed));
             }
+        }
+
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> Me(CancellationToken ct)
+        {
+            var idValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                          ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+            if (!int.TryParse(idValue, out var userId))
+                return Unauthorized();
+
+            var me = await authService.GetCurrentUserAsync(userId, ct);
+            return me is null ? Unauthorized() : Ok(me);
         }
 
         [HttpPost("refresh")]

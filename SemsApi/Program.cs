@@ -89,9 +89,11 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddCors(options =>
 {
+    var frontendUrl = builder.Configuration["Frontend:BaseUrl"]!.TrimEnd('/');
+
     options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(frontendUrl)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials()
@@ -127,12 +129,6 @@ builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
-{
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
-    await RoleSeeder.SeedAsync(roleManager);
-}
 
 using (var scope = app.Services.CreateScope())
 {

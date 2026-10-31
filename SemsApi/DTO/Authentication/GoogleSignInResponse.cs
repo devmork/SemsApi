@@ -1,5 +1,3 @@
 ﻿using SemsApi.Models;
 
-namespace SemsApi.DTO.Authentication;
-
-public sealed record GoogleSignInResponse(ApplicationUser User, bool IsNewUser);
+public sealed record GoogleSignInResponse(ApplicationUser applicationUser, bool IsNewUser);
