@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.User
+﻿namespace SemsApi.DTO.ApplicationUser
 {
     public class UserRequest
     {
