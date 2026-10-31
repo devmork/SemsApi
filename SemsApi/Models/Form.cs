@@ -29,7 +29,7 @@
 
         /// <summary>FK to Users (AspNetUsers.Id) - the user who created the form.</summary>
         public int CreatedBy { get; set; }
-        public User Creator { get; set; } = null!;
+        public ApplicationUser Creator { get; set; } = null!;
 
         /// <summary>1 = active, 0 = inactive/draft.</summary>
         public int IsActive { get; set; } = 1;
