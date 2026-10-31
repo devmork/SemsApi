@@ -1,42 +1,35 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using SemsApi.Configuration;
 using SemsApi.Data;
 using SemsApi.Interfaces;
 using SemsApi.Models;
 using SemsApi.Seeders;
 using SemsApi.Services;
+using SemsApi.Utilities;
 using System.Text;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .ConfigureWarnings(w => w.Ignore(
-               Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
-// ===== Identity =====
-builder.Services.AddIdentity<User, Role>(options =>
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.Password.RequireDigit = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredLength = 6;
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
+
+builder.Services.AddIdentity<ApplicationUser, Role>(options =>
+{
     options.User.RequireUniqueEmail = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
-
-// CONFIGURATION
-builder.Services.Configure<GoogleOptions>(builder.Configuration.GetSection("Google"));
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
-builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
 
 builder.Services.Scan(scan => scan
     .FromAssemblyOf<Program>()
@@ -45,34 +38,72 @@ builder.Services.Scan(scan => scan
         .AsImplementedInterfaces()
         .WithScopedLifetime()
  );
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddGoogle(options =>
+{
+    options.ClientId = builder.Configuration["Google:ClientId"]!;
+    options.ClientSecret = builder.Configuration["Google:ClientSecret"]!;
+    options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.SaveTokens = false;
+    options.ClaimActions.MapJsonKey("email_verified", "email_verified");
+    options.SignInScheme = IdentityConstants.ExternalScheme;
+
+    options.Events.OnRedirectToAuthorizationEndpoint = ctx =>
     {
-        options.MapInboundClaims = false;
-        options.TokenValidationParameters = new TokenValidationParameters
+        var url = QueryHelpers.AddQueryString(ctx.RedirectUri, new Dictionary<string, string?>
         {
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SigningKey"]!))
-        };
-    });
+            ["hd"] = "dmc.edu.ph",
+            ["prompt"] = "select_account"
+        });
+        ctx.Response.Redirect(url);
+        return Task.CompletedTask;
+    };
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? ""))
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            context.Token = context.Request.Cookies["ACCESS_TOKEN"];
+            return Task.CompletedTask;
+        }
+    };
+});
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("FrontendPolicy", policy =>
+    var frontendUrl = builder.Configuration["Frontend:BaseUrl"]!.TrimEnd('/');
+
+    options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(frontendUrl)
               .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -113,9 +144,9 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "SEMS API v1");
     });
 }
-
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
-app.UseCors("FrontendPolicy");
+app.UseCors("CorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -125,28 +125,116 @@ namespace SemsApi.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationType", b =>
+            modelBuilder.Entity("SemsApi.Models.ApplicationUser", b =>
                 {
-                    b.Property<int>("EvaluationTypeId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EvaluationTypeId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("EvaluationTypeName")
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.HasKey("EvaluationTypeId");
+                    b.Property<string>("GoogleSubjectId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
-                    b.HasIndex("EvaluationTypeName")
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("MiddleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PictureUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GoogleSubjectId")
                         .IsUnique();
 
-                    b.ToTable("EvaluationType", "Eval");
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex")
+                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                    b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("SemsApi.Models.Eval.Form", b =>
+            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
                 {
                     b.Property<int>("FormId")
                         .ValueGeneratedOnAdd()
@@ -176,12 +264,18 @@ namespace SemsApi.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
-                    b.Property<int>("IsActive")
-                        .HasColumnType("int");
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
-                    b.Property<int>("ProgramId")
-                        .HasColumnType("int");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
                     b.Property<string>("TargetType")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -193,17 +287,14 @@ namespace SemsApi.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.HasKey("FormId");
+                    b.HasKey("FormId");
 
+                    b.HasIndex("Code");
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.HasIndex("CreatedBy");
-
-                    b.HasIndex("EvaluationTypeId");
-
-                    b.HasIndex("ProgramId");
-
-                    b.ToTable("Forms", "Eval");
+                    b.ToTable("EvaluationForm", "Eval");
+                    b.ToTable("EvaluationForm", "Eval");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Eval.GuidanceEvaluationLog", b =>
@@ -285,12 +376,21 @@ namespace SemsApi.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
-                    b.Property<int>("EvaluationTypeId")
+                    b.Property<string>("EvalType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("FormId")
                         .HasColumnType("int");
 
-                    b.HasKey("CatNo");
+                    b.Property<int>("FormId")
+                        .HasColumnType("int");
 
-                    b.HasIndex("EvaluationTypeId");
+                    b.HasKey("Recno");
+
+                    b.HasIndex("FormId");
+
+                    b.HasIndex("FormId");
 
                     b.ToTable("TeacherEvaluationCategory", "Eval");
                 });
@@ -303,7 +403,17 @@ namespace SemsApi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("QnNo"));
 
-                    b.Property<int>("CatNo")
+                    b.Property<int?>("CatNo")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EvalType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("FormId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FormId")
                         .HasColumnType("int");
 
                     b.Property<string>("QnName")
@@ -311,7 +421,11 @@ namespace SemsApi.Migrations
 
                     b.HasKey("QnNo");
 
-                    b.HasIndex("CatNo");
+                    b.HasKey("Recno");
+
+                    b.HasIndex("FormId");
+
+                    b.HasIndex("FormId");
 
                     b.ToTable("TeacherEvaluationResult", "Eval");
                 });
@@ -354,28 +468,26 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("SemsApi.Models.RefreshToken", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("uniqueidentifier");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("ExpiresAt")
+                    b.Property<DateTime>("ExpiresAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ReplacedByTokenHash")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("RevokedAt")
+                    b.Property<DateTime?>("RevokedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -521,110 +633,6 @@ namespace SemsApi.Migrations
                     b.ToTable("Teachers");
                 });
 
-            modelBuilder.Entity("SemsApi.Models.User", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("GoogleSubjectId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("MiddleName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GoogleSubjectId")
-                        .IsUnique();
-
-                    b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
-
-                    b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
-
-                    b.ToTable("AspNetUsers", (string)null);
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
                 {
                     b.HasOne("SemsApi.Models.Role", null)
@@ -636,7 +644,7 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
                 {
-                    b.HasOne("SemsApi.Models.User", null)
+                    b.HasOne("SemsApi.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -645,7 +653,7 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
                 {
-                    b.HasOne("SemsApi.Models.User", null)
+                    b.HasOne("SemsApi.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -660,7 +668,7 @@ namespace SemsApi.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SemsApi.Models.User", null)
+                    b.HasOne("SemsApi.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -669,7 +677,7 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
                 {
-                    b.HasOne("SemsApi.Models.User", null)
+                    b.HasOne("SemsApi.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -730,8 +738,8 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("SemsApi.Models.RefreshToken", b =>
                 {
-                    b.HasOne("SemsApi.Models.User", "User")
-                        .WithMany()
+                    b.HasOne("SemsApi.Models.ApplicationUser", "User")
+                        .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -741,7 +749,7 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("SemsApi.Models.Student", b =>
                 {
-                    b.HasOne("SemsApi.Models.User", "User")
+                    b.HasOne("SemsApi.Models.ApplicationUser", "User")
                         .WithOne("Student")
                         .HasForeignKey("SemsApi.Models.Student", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -752,7 +760,7 @@ namespace SemsApi.Migrations
 
             modelBuilder.Entity("SemsApi.Models.Teacher", b =>
                 {
-                    b.HasOne("SemsApi.Models.User", "User")
+                    b.HasOne("SemsApi.Models.ApplicationUser", "User")
                         .WithOne("Teacher")
                         .HasForeignKey("SemsApi.Models.Teacher", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -761,11 +769,18 @@ namespace SemsApi.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("SemsApi.Models.User", b =>
+            modelBuilder.Entity("SemsApi.Models.ApplicationUser", b =>
                 {
+                    b.Navigation("RefreshTokens");
+
                     b.Navigation("Student");
 
                     b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("SemsApi.Models.Eval.EvaluationForm", b =>
+                {
+                    b.Navigation("Categories");
                 });
 #pragma warning restore 612, 618
         }

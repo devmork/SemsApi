@@ -6,7 +6,7 @@ using SemsApi.Models.Eval;
 
 namespace SemsApi.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<User, Role, int>
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Role, int>
     {
         //public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         //    : base(options)
@@ -490,29 +490,26 @@ namespace SemsApi.Data
             // =====================================================
             // USER (IdentityUser)
             // =====================================================
-            modelBuilder.Entity<User>(e =>
+            modelBuilder.Entity<ApplicationUser>(e =>
             {
-                e.Property(u => u.GoogleSubjectId)
-                    .IsRequired()
-                    .HasMaxLength(255);
+                e.Property(u => u.GoogleSubjectId).IsRequired().HasMaxLength(255);
+                e.HasIndex(u => u.GoogleSubjectId).IsUnique();
 
-                e.HasIndex(u => u.GoogleSubjectId)
-                    .IsUnique();
+                e.Property(u => u.FirstName).IsRequired().HasMaxLength(100);
+                e.Property(u => u.MiddleName).HasMaxLength(100);
+                e.Property(u => u.LastName).IsRequired().HasMaxLength(100);
+                e.Property(u => u.PictureUrl).HasMaxLength(500);
 
-                e.Property(u => u.FirstName)
-                    .IsRequired()
-                    .HasMaxLength(100);
+                e.Property(u => u.Status).HasConversion<int>();
+            });
 
-                e.Property(u => u.MiddleName)
-                    .HasMaxLength(100);
-
-                e.Property(u => u.LastName)
-                    .IsRequired()
-                    .HasMaxLength(100);
-
-                e.Property(u => u.Status)
-                    .IsRequired()
-                    .HasMaxLength(20);
+            modelBuilder.Entity<RefreshToken>(e =>
+            {
+                e.HasKey(t => t.Id);
+                e.Property(t => t.TokenHash).HasMaxLength(128).IsRequired();
+                e.HasIndex(t => t.TokenHash).IsUnique();
+                e.HasOne(t => t.User).WithMany(u => u.RefreshTokens)
+                 .HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
             // =====================================================
