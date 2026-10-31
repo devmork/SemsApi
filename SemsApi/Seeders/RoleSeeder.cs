@@ -31,6 +31,14 @@ namespace SemsApi.Seeders
                 Description = "Student",
                 IsActive = true,
                 SortOrder = 3
+            },
+            new Role
+            {
+                Name = "QA",
+                NormalizedName = "QA",
+                Description = "Quality Assurance",
+                IsActive = true,
+                SortOrder = 4
             }
         };
 

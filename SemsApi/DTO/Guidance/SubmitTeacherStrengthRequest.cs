@@ -2,7 +2,7 @@
 {
     public class SubmitTeacherStrengthRequest //Purpose: Payload when submitting teacher comments
     {
-        public string EvalType { get; set; } = "Teacher Evaluation";
+        public int EvaluationTypeId { get; set; }
         public string TeacherId { get; set; } = string.Empty;
         public string StudentId { get; set; } = string.Empty;
         public string Sy { get; set; } = "2026-2027";

@@ -3,7 +3,10 @@
     public class TeacherEvaluationStrength
     {
         public int Recno { get; set; }
-        public string? EvalType { get; set; }
+
+        public int EvaluationTypeId { get; set; }
+        public EvaluationType EvaluationType { get; set; } = null!;
+
         public string? TeacherId { get; set; }
         public string? StudentId { get; set; }
         public string? Sy { get; set; }
