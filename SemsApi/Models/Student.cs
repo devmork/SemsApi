@@ -12,5 +12,9 @@
         public string Section { get; set; } = string.Empty;
         public string SchoolYear { get; set; } = string.Empty;
         public string Status { get; set; } = "Active";
+
+        public ICollection<StudentSubjectEnrollment> SubjectEnrollments { get; set; } = new List<StudentSubjectEnrollment>();
+        public ICollection<StudentTermEnrollment> TermEnrollments { get; set; } = new List<StudentTermEnrollment>();
+        public ICollection<TeacherEvaluationSubmission> EvaluationSubmissions { get; set; } = new List<TeacherEvaluationSubmission>();
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace SemsApi.Models.Eval
+﻿namespace SemsApi.Models
 {
     /// <summary>
     /// Represents a type of evaluation (e.g. "Teacher Evaluation", "Facility Evaluation").
