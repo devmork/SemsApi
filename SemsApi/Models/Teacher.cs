@@ -10,5 +10,8 @@
         public string EmployeeNumber { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
         public string Status { get; set; } = "Active";
+
+        public ICollection<SubjectOffering> SubjectOfferings { get; set; } = new List<SubjectOffering>();
+        public ICollection<TeacherEvaluationSubmission> EvaluationSubmissions { get; set; } = new List<TeacherEvaluationSubmission>();
     }
 }
