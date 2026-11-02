@@ -5,6 +5,7 @@ using SemsApi.Data;
 using SemsApi.DTO.Evaluation;
 using SemsApi.DTO.Guidance;
 using SemsApi.DTO.Teacher;
+using SemsApi.Models;
 using SemsApi.Models.Eval;
 
 namespace SemsApi.Controllers

@@ -1,4 +1,4 @@
-﻿namespace SemsApi.Models.Eval
+﻿namespace SemsApi.Models
 {
     public class GuidanceEvaluationLog
     {

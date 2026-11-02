@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.EvaluationType;
 using SemsApi.Interfaces;
+using SemsApi.Models;
 using SemsApi.Models.Eval;
 using SemsApi.Utilities;
 

@@ -1,5 +1,5 @@
 ﻿using SemsApi.DTO;
-using SemsApi.Models.Eval;
+using SemsApi.Models;
 
 namespace SemsApi.Utilities
 {

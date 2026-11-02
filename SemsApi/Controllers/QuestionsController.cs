@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.Evaluation;
-using SemsApi.Models.Eval;
+using SemsApi.Models;
 
 namespace SemsApi.Controllers
 {

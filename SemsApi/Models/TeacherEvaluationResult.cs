@@ -1,4 +1,4 @@
-﻿namespace SemsApi.Models.Eval
+﻿namespace SemsApi.Models
 {
     /// <summary>
     /// A question. Its evaluation type comes through its category.
