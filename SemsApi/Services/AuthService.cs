@@ -41,20 +41,144 @@ namespace SemsApi.Services
         public async Task<UserResponse?> GetCurrentUserAsync(int userId, CancellationToken ct = default)
         {
             var user = await _userManager.Users
-                         .AsNoTracking()
-                         .FirstOrDefaultAsync(u => u.Id == userId, ct);
+                             .AsNoTracking()
+                             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
             if (user is null || user.Status != UserStatus.Active)
                 return null;
 
             var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault();
+
+            // Only fetch the academic graph if the account's primary role is "Student".
+            // Admin / QA / Teacher keep the existing behavior (studentProfile = null).
+            StudentProfileDto? studentProfile = null;
+            if (string.Equals(role, "Student", StringComparison.OrdinalIgnoreCase))
+            {
+                studentProfile = await BuildStudentProfileAsync(userId, ct);
+            }
+
+            var fullName = $"{user.FirstName} {user.LastName}".Trim();
+
             return new UserResponse(
                 user.Id,
                 user.Email!,
                 user.FirstName,
                 user.LastName,
+                fullName,
                 user.PictureUrl,
-                roles.FirstOrDefault());
+                role,
+                studentProfile);
+        }
+
+        /// <summary>
+        /// Builds the consolidated student profile from the authenticated ApplicationUser.Id.
+        /// Uses a single user-scoped chain (never trusts a client-supplied student id)
+        /// and projects directly into DTOs (no Include chains, no N+1).
+        /// </summary>
+        private async Task<StudentProfileDto?> BuildStudentProfileAsync(int userId, CancellationToken ct)
+        {
+            // ApplicationUser.Id -> Student.UserId
+            var student = await _dbContext.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct);
+
+            if (student is null)
+                return null; // account exists but no academic record was linked → profile is null
+
+            // -----------------------------------------------------------------
+            // Current term enrollment  (StudentTermEnrollment is the source of truth)
+            // Rule: newest ACTIVE term by (SchoolYear, Term, EnrolledAtUtc).
+            // -----------------------------------------------------------------
+            var currentTerm = await _dbContext.StudentTermEnrollments
+                .AsNoTracking()
+                .Where(t => t.StudentId == student.StudentId && t.Status == "Enrolled")
+                .OrderByDescending(t => t.SchoolYear)
+                .ThenByDescending(t => t.Term)
+                .ThenByDescending(t => t.EnrolledAtUtc)
+                .FirstOrDefaultAsync(ct);
+
+            // -----------------------------------------------------------------
+            // Subjects: only ACTIVE enrollments in ACTIVE offerings.
+            // Single projection → one SQL query, no N+1, no entity graphs.
+            // -----------------------------------------------------------------
+            var subjectRows = await _dbContext.StudentSubjectEnrollments
+                .AsNoTracking()
+                .Where(e => e.StudentId == student.StudentId
+                         && e.Status == "Enrolled"
+                         && e.SubjectOffering.IsActive)
+                .OrderBy(e => e.SubjectOffering.SchoolYear)
+                .ThenBy(e => e.SubjectOffering.Term)
+                .ThenBy(e => e.SubjectOffering.Subject.Code)
+                .Select(e => new
+                {
+                    e.Status,
+                    e.SubjectOfferingId,
+                    e.SubjectOffering.SubjectId,
+                    SubjectCode = e.SubjectOffering.Subject.Code,
+                    SubjectDescription = e.SubjectOffering.Subject.Description,
+                    e.SubjectOffering.GradeLevel,
+                    e.SubjectOffering.Section,
+                    e.SubjectOffering.SchoolYear,
+                    e.SubjectOffering.Term,
+                    e.SubjectOffering.TeacherId,
+                    TeacherFirstName = e.SubjectOffering.Teacher != null ? e.SubjectOffering.Teacher.User.FirstName : null,
+                    TeacherLastName = e.SubjectOffering.Teacher != null ? e.SubjectOffering.Teacher.User.LastName : null,
+                    TeacherEmployeeNumber = e.SubjectOffering.Teacher != null ? e.SubjectOffering.Teacher.EmployeeNumber : null
+                })
+                .ToListAsync(ct);
+
+            var subjects = subjectRows
+                .Select(s => new StudentProfileSubjectDto(
+                    s.SubjectOfferingId,
+                    s.SubjectId,
+                    s.SubjectCode,
+                    s.SubjectDescription,
+                    GradeLevelHelper.ToDisplay(s.GradeLevel),
+                    s.Section,
+                    s.SchoolYear,
+                    s.Term,
+                    s.TeacherId.HasValue
+                        ? new StudentProfileTeacherDto(
+                            s.TeacherId.Value,
+                            s.TeacherEmployeeNumber,
+                            $"{s.TeacherFirstName} {s.TeacherLastName}".Trim())
+                        : null,
+                    s.Status))
+                .ToList();
+
+            // -----------------------------------------------------------------
+            // Profile summary. Prefer the active StudentTermEnrollment; only fall
+            // back to the (potentially stale) Student row when no active term exists.
+            // Section always comes from Student because StudentTermEnrollment has no
+            // Section column — it is a class-level, not a term-level, attribute.
+            // -----------------------------------------------------------------
+            string? gradeLevel;
+            string? schoolYear;
+            int? term;
+
+            if (currentTerm is not null)
+            {
+                gradeLevel = GradeLevelHelper.ToDisplay(currentTerm.GradeLevel);
+                schoolYear = currentTerm.SchoolYear;
+                term = currentTerm.Term;
+            }
+            else
+            {
+                gradeLevel = student.GradeLevel;
+                schoolYear = student.SchoolYear;
+                term = null;
+            }
+
+            return new StudentProfileDto(
+                student.StudentId,
+                student.StudentNumber,
+                gradeLevel,
+                student.Section,
+                schoolYear,
+                term,
+                student.Status,
+                subjects);
         }
 
         public async Task<AuthTokenResponse> IssueTokensAsync(ApplicationUser user, CancellationToken ct = default)

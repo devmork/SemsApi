@@ -5,6 +5,8 @@
         string Email,
         string FirstName,
         string LastName,
+        string FullName,
         string? PictureUrl,
-        string? Role);
+        string? Role,
+        StudentProfileDto? StudentProfile);
 }
