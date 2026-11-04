@@ -30,6 +30,9 @@ namespace SemsApi.Models
         public int Term { get; set; }
         public DateTime SubmittedAtUtc { get; set; } = DateTime.UtcNow;
 
+        public int? EvaluationSessionId { get; set; }
+        public EvaluationSession? EvaluationSession { get; set; }
+
         public ICollection<TeacherEvaluationAnswer> Answers { get; set; } = new List<TeacherEvaluationAnswer>();
     }
 }

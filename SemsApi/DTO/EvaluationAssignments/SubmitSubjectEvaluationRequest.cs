@@ -7,6 +7,7 @@
         public int? FormId { get; set; }
         public string SchoolYear { get; set; } = string.Empty;
         public int Term { get; set; }
+        public int? EvaluationSessionId { get; set; }
         public List<EvaluationAnswerDto> Answers { get; set; } = new();
     }
 }
