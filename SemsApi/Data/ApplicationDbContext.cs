@@ -485,6 +485,9 @@ namespace SemsApi.Data
         // Evaluation submissions
         public DbSet<TeacherEvaluationSubmission> TeacherEvaluationSubmissions => Set<TeacherEvaluationSubmission>();
         public DbSet<TeacherEvaluationAnswer> TeacherEvaluationAnswers => Set<TeacherEvaluationAnswer>();
+
+        //Evaluation Session
+        public DbSet<EvaluationSession> EvaluationSessions => Set<EvaluationSession>();
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder); // Important! Creates Identity tables
@@ -791,6 +794,13 @@ namespace SemsApi.Data
                     .HasForeignKey(x => x.EvaluationTypeId).OnDelete(DeleteBehavior.Restrict);
                 e.HasOne(x => x.Form).WithMany()
                     .HasForeignKey(x => x.FormId).OnDelete(DeleteBehavior.Restrict);
+                e.Property(x => x.EvaluationSessionId).IsRequired(false);
+                e.HasIndex(x => x.EvaluationSessionId);
+
+                e.HasOne(x => x.EvaluationSession)
+                    .WithMany(s => s.Submissions)
+                    .HasForeignKey(x => x.EvaluationSessionId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<TeacherEvaluationAnswer>(e =>
@@ -801,6 +811,37 @@ namespace SemsApi.Data
                 e.HasIndex(x => new { x.SubmissionId, x.QnNo }).IsUnique();
                 e.HasOne(x => x.Submission).WithMany(s => s.Answers)
                     .HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<EvaluationSession>(e =>
+            {
+                e.ToTable("EvaluationSessions", "Eval");
+                e.HasKey(x => x.EvaluationSessionId);
+                e.Property(x => x.EvaluationSessionId).ValueGeneratedOnAdd();
+
+                e.Property(x => x.SchoolYear).IsRequired().HasMaxLength(9);
+                e.Property(x => x.Term).IsRequired();
+                e.Property(x => x.Status).HasConversion<int>().IsRequired();
+                e.Property(x => x.Notes).HasMaxLength(1000);
+
+                // One non-archived session per Form + SchoolYear + Term.
+                // Archived sessions are historical and may repeat the same period.
+                e.HasIndex(x => new { x.FormId, x.SchoolYear, x.Term })
+                    .IsUnique()
+                    .HasFilter("[Status] <> 3");
+
+                e.HasIndex(x => new { x.Status, x.OpensAtUtc, x.ClosesAtUtc });
+                e.HasIndex(x => x.CreatedBy);
+
+                e.HasOne(x => x.Form)
+                    .WithMany()
+                    .HasForeignKey(x => x.FormId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.Creator)
+                    .WithMany()
+                    .HasForeignKey(x => x.CreatedBy)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // =====================================================
