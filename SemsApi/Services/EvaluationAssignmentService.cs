@@ -5,6 +5,7 @@ using SemsApi.DTO.EvaluationAssignments;
 using SemsApi.Interfaces;
 using SemsApi.Models;
 using SemsApi.Models.Eval;
+using SemsApi.Utilities;
 
 namespace SemsApi.Services
 {
@@ -60,6 +61,22 @@ namespace SemsApi.Services
                 var t = o.Teacher!;
                 submissionMap.TryGetValue(o.SubjectOfferingId, out var sub);
 
+                // Prefer an open EvaluationSession for the offering's SY + Term.
+                // Falls back to the legacy grade-level Form resolution when no session exists.
+                EvaluationSession? openSession = null;
+                if (sub is null)
+                {
+                    openSession = await ResolveOpenSessionAsync(o.GradeLevel, o.SchoolYear, o.Term, ct);
+                }
+
+                var evaluationTypeId = sub?.EvaluationTypeId
+                    ?? openSession?.Form.EvaluationTypeId
+                    ?? await ResolveEvaluationTypeIdAsync(o.GradeLevel, ct);
+
+                var formId = sub?.FormId
+                    ?? openSession?.FormId
+                    ?? await ResolveFormIdAsync(o.GradeLevel, ct);
+
                 var item = new EvaluationAssignmentDto
                 {
                     SubjectOfferingId = o.SubjectOfferingId,
@@ -75,8 +92,8 @@ namespace SemsApi.Services
                     Term = o.Term,
                     IsCompleted = sub is not null,
                     SubmittedAtUtc = sub?.SubmittedAtUtc,
-                    EvaluationTypeId = sub?.EvaluationTypeId ?? await ResolveEvaluationTypeIdAsync(o.GradeLevel, ct),
-                    FormId = sub?.FormId ?? await ResolveFormIdAsync(o.GradeLevel, ct)
+                    EvaluationTypeId = evaluationTypeId,
+                    FormId = formId
                 };
 
                 if (filter is null || item.IsCompleted == filter.Value)
@@ -118,6 +135,56 @@ namespace SemsApi.Services
                     s.SubjectOfferingId == offering.SubjectOfferingId, ct))
                 return new ConflictObjectResult(new { message = "This subject has already been evaluated." });
 
+            // ---------- Resolve the evaluation session for this submission ----------
+            EvaluationSession? session = null;
+
+            if (request.EvaluationSessionId.HasValue)
+            {
+                session = await _context.EvaluationSessions
+                    .AsNoTracking()
+                    .Include(s => s.Form)
+                    .FirstOrDefaultAsync(
+                        s => s.EvaluationSessionId == request.EvaluationSessionId.Value,
+                        ct);
+
+                if (session is null)
+                    return new BadRequestObjectResult(new { message = "Evaluation session not found." });
+
+                if (!EvaluationSessionHelper.IsWithinWindow(session, DateTime.UtcNow))
+                    return new BadRequestObjectResult(new { message = "This evaluation session is not open." });
+
+                if (session.SchoolYear != offering.SchoolYear || session.Term != offering.Term)
+                    return new BadRequestObjectResult(new
+                    {
+                        message = "The evaluation session does not match the subject offering's school year and term."
+                    });
+
+                if (request.FormId.HasValue && request.FormId.Value != session.FormId)
+                    return new BadRequestObjectResult(new
+                    {
+                        message = "The submitted FormId does not match the evaluation session."
+                    });
+            }
+            else if (request.FormId.HasValue)
+            {
+                // Caller supplied a FormId but no session id: try to attach the matching open session
+                // for auditability. If none exists, submission still proceeds (legacy behaviour).
+                session = await FindOpenSessionForFormAsync(
+                    request.FormId.Value,
+                    offering.SchoolYear,
+                    offering.Term,
+                    ct);
+            }
+
+            if (session is not null &&
+                request.EvaluationTypeId != session.Form.EvaluationTypeId)
+            {
+                return new BadRequestObjectResult(new
+                {
+                    message = "EvaluationTypeId does not match the evaluation session's form."
+                });
+            }
+
             if (!await _context.EvaluationTypes.AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId, ct))
                 return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
@@ -139,7 +206,8 @@ namespace SemsApi.Services
                     SubjectOfferingId = offering.SubjectOfferingId,
                     TeacherId = offering.TeacherId.Value,
                     EvaluationTypeId = request.EvaluationTypeId,
-                    FormId = request.FormId,
+                    FormId = request.FormId ?? session?.FormId,
+                    EvaluationSessionId = session?.EvaluationSessionId,
                     SchoolYear = offering.SchoolYear,
                     Term = offering.Term,
                     SubmittedAtUtc = DateTime.UtcNow
@@ -173,6 +241,70 @@ namespace SemsApi.Services
         }
 
         // ---------- helpers ----------
+
+        /// <summary>
+        /// Finds an Open EvaluationSession for the given grade level / school year / term,
+        /// preferring exact ProgramId matches. Used when resolving pending assignments.
+        /// </summary>
+        private async Task<EvaluationSession?> ResolveOpenSessionAsync(
+            int gradeLevel,
+            string schoolYear,
+            int term,
+            CancellationToken ct)
+        {
+            var now = DateTime.UtcNow;
+            var programId = GradeLevelToProgramId(gradeLevel);
+
+            return await _context.EvaluationSessions
+                .AsNoTracking()
+                .Include(s => s.Form)
+                    .ThenInclude(f => f.EvaluationType)
+                .Where(s =>
+                    s.Status == EvaluationSessionStatus.Open &&
+                    s.SchoolYear == schoolYear &&
+                    s.Term == term &&
+                    (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
+                    (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now) &&
+                    s.Form.IsActive == 1 &&
+                    s.Form.TargetType == "SubjectTeacher" &&
+                    (s.Form.ProgramId == programId || s.Form.ProgramId == 0))
+                .OrderBy(s => s.Form.ProgramId == programId ? 0 : 1)
+                .ThenByDescending(s => s.CreatedAtUtc)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        /// <summary>
+        /// Finds an Open EvaluationSession for a specific Form + SY + Term.
+        /// Used at submit time when the caller only supplied a FormId.
+        /// </summary>
+        private async Task<EvaluationSession?> FindOpenSessionForFormAsync(
+            int formId,
+            string schoolYear,
+            int term,
+            CancellationToken ct)
+        {
+            var now = DateTime.UtcNow;
+
+            return await _context.EvaluationSessions
+                .AsNoTracking()
+                .Include(s => s.Form)
+                .Where(s =>
+                    s.FormId == formId &&
+                    s.SchoolYear == schoolYear &&
+                    s.Term == term &&
+                    s.Status == EvaluationSessionStatus.Open &&
+                    (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
+                    (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now))
+                .FirstOrDefaultAsync(ct);
+        }
+
+        private static int GradeLevelToProgramId(int gradeLevel) => gradeLevel switch
+        {
+            >= 0 and <= 5 => 1,
+            >= 6 and <= 8 => 2,
+            _ => 3
+        };
+
         private async Task<int?> ResolveEvaluationTypeIdAsync(int gradeLevel, CancellationToken ct)
         {
             var formId = await ResolveFormIdAsync(gradeLevel, ct);
@@ -186,12 +318,7 @@ namespace SemsApi.Services
         private async Task<int?> ResolveFormIdAsync(int gradeLevel, CancellationToken ct)
         {
             // ProgramId: 0=all, 1=PreK-G3, 2=G4-G6, 3=JHS-SHS
-            var programId = gradeLevel switch
-            {
-                >= 0 and <= 5 => 1,
-                >= 6 and <= 8 => 2,
-                _ => 3
-            };
+            var programId = GradeLevelToProgramId(gradeLevel);
 
             var form = await _context.Forms.AsNoTracking()
                 .Where(f => f.IsActive == 1
