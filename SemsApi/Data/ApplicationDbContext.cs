@@ -488,6 +488,11 @@ namespace SemsApi.Data
 
         //Evaluation Session
         public DbSet<EvaluationSession> EvaluationSessions => Set<EvaluationSession>();
+
+        // Facility evaluations
+        public DbSet<Facility> Facilities => Set<Facility>();
+        public DbSet<FacilityEvaluationSubmission> FacilityEvaluationSubmissions => Set<FacilityEvaluationSubmission>();
+        public DbSet<FacilityEvaluationAnswer> FacilityEvaluationAnswers => Set<FacilityEvaluationAnswer>();
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder); // Important! Creates Identity tables
@@ -842,6 +847,52 @@ namespace SemsApi.Data
                     .WithMany()
                     .HasForeignKey(x => x.CreatedBy)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // =====================================================
+            // FACILITY / NON-TEACHER EVALUATION
+            // =====================================================
+            modelBuilder.Entity<Facility>(e =>
+            {
+                e.HasKey(x => x.FacilityId);
+                e.Property(x => x.FacilityName).IsRequired().HasMaxLength(150);
+                e.Property(x => x.Description).HasMaxLength(1000);
+                e.Property(x => x.Location).HasMaxLength(200);
+                e.HasIndex(x => x.FacilityName).IsUnique();
+            });
+
+            modelBuilder.Entity<FacilityEvaluationSubmission>(e =>
+            {
+                e.ToTable("FacilityEvaluationSubmissions", "Eval");
+                e.HasKey(x => x.SubmissionId);
+                e.Property(x => x.SubmissionId).ValueGeneratedOnAdd();
+                e.Property(x => x.SchoolYear).IsRequired().HasMaxLength(9);
+                e.Property(x => x.Term).IsRequired();
+
+                e.HasIndex(x => new { x.StudentId, x.FacilityId, x.SchoolYear, x.Term }).IsUnique();
+                e.HasIndex(x => x.FacilityId);
+                e.HasIndex(x => x.EvaluationSessionId);
+
+                e.HasOne(x => x.Student).WithMany()
+                    .HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(x => x.Facility).WithMany(f => f.EvaluationSubmissions)
+                    .HasForeignKey(x => x.FacilityId).OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(x => x.EvaluationType).WithMany()
+                    .HasForeignKey(x => x.EvaluationTypeId).OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(x => x.Form).WithMany()
+                    .HasForeignKey(x => x.FormId).OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(x => x.EvaluationSession).WithMany()
+                    .HasForeignKey(x => x.EvaluationSessionId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<FacilityEvaluationAnswer>(e =>
+            {
+                e.ToTable("FacilityEvaluationAnswers", "Eval");
+                e.HasKey(x => x.AnswerId);
+                e.Property(x => x.AnswerId).ValueGeneratedOnAdd();
+                e.HasIndex(x => new { x.SubmissionId, x.QnNo }).IsUnique();
+                e.HasOne(x => x.Submission).WithMany(s => s.Answers)
+                    .HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
             });
 
             // =====================================================
