@@ -99,6 +99,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Submit Guidance Evaluation (answers + log)
         /// </summary>
+        [Authorize]
         [HttpPost("guidance/submit")]
         public async Task<ActionResult> SubmitGuidance([FromBody] SubmitGuidanceRequest request)
         {

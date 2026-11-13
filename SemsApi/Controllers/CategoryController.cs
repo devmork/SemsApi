@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO;
 using SemsApi.Interfaces;
 
@@ -47,7 +48,7 @@ namespace SemsApi.Controllers
         // CREATE
         // ---------------------------------------------------------------------
 
-        //[Authorize(Roles = "QA")]
+        [Authorize(Roles = "QA")]
         [HttpPost]
         public async Task<ActionResult> Create([FromBody] CategoryRequestDto request)
         {
@@ -58,7 +59,7 @@ namespace SemsApi.Controllers
         // UPDATE
         // ---------------------------------------------------------------------
 
-        //[Authorize(Roles = "QA")]
+        [Authorize(Roles = "QA")]
         [HttpPut("{catNo:int}")]
         public async Task<ActionResult> Update(int catNo, [FromBody] CategoryRequestDto request)
         {
@@ -69,7 +70,7 @@ namespace SemsApi.Controllers
         // DELETE
         // ---------------------------------------------------------------------
 
-        //[Authorize(Roles = "QA")]
+        [Authorize(Roles = "QA")]
         [HttpDelete("{catNo:int}")]
         public async Task<ActionResult> Delete(int catNo)
         {

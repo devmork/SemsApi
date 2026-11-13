@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO.Facility;
 using SemsApi.Interfaces;
 
 namespace SemsApi.Controllers
 {
     [ApiController]
-    //[Authorize(Roles = "QA,Admin")]
+    [Authorize(Roles = "QA,Admin")]
     [Route("api/evaluation/facility-results")]
     public class FacilityEvaluationResultsController : ControllerBase
     {

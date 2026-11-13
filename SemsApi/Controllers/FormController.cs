@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.SqlServer.Server;
 using SemsApi.DTO.Form;
 using SemsApi.Interfaces;
+using SemsApi.Utilities;
 using System.IdentityModel.Tokens.Jwt;
 
 namespace SemsApi.Controllers
@@ -59,22 +61,22 @@ namespace SemsApi.Controllers
         /// Create a new form. CreatedBy is taken from the signed-in user's token, so a valid token is required.
         /// The evaluation type must have at least one category, and every category must have at least one question.
         /// </summary>
-        //[Authorize(Roles = "QA")]
+        [Authorize(Roles = "QA")]
         [HttpPost]
         public async Task<ActionResult> Create([FromBody] FormRequestDto request)
         {
-            var userIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub);
-            if (userIdClaim is null || !int.TryParse(userIdClaim.Value, out var userId))
+            var userId = UserContextResolver.GetUserId(HttpContext);
+            if (userId is null)
                 return Unauthorized(new { message = "Sign in to create a form." });
 
-            return await _service.CreateAsync(request, userId);
+            return await _service.CreateAsync(request, userId.Value);
         }
 
         // ---------------------------------------------------------------------
         // UPDATE
         // ---------------------------------------------------------------------
 
-        //[Authorize(Roles = "QA")]
+        [Authorize(Roles = "QA")]
         [HttpPut("{formId:int}")]
         public async Task<ActionResult> Update(int formId, [FromBody] FormRequestDto request)
         {
@@ -85,7 +87,7 @@ namespace SemsApi.Controllers
         // DELETE
         // ---------------------------------------------------------------------
 
-        //[Authorize(Roles = "QA")]
+        [Authorize(Roles = "QA")]
         [HttpDelete("{formId:int}")]
         public async Task<ActionResult> Delete(int formId)
         {

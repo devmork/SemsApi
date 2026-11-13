@@ -67,7 +67,7 @@ namespace SemsApi.Controllers
         /// Create a Draft session from an existing Form. CreatedBy is captured from the
         /// authenticated user (or the development debug_userId bypass).
         /// </summary>
-        //[Authorize(Roles = "Qa,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpPost]
         public async Task<ActionResult> Create(
             [FromBody] EvaluationSessionCreateRequest request,
@@ -84,7 +84,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Update status, window or notes. Closed -> Open is only allowed for Admins.
         /// </summary>
-        //[Authorize(Roles = "Qa,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpPut("{id:int}")]
         public async Task<ActionResult> Update(
             int id,
@@ -103,7 +103,7 @@ namespace SemsApi.Controllers
         /// Delete a session. Open sessions must be closed first; sessions with submissions
         /// must be archived instead.
         /// </summary>
-        //[Authorize(Roles = "Qa,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id, CancellationToken ct = default)
         {
@@ -114,7 +114,7 @@ namespace SemsApi.Controllers
         /// Convenience endpoint: move a Draft session to Open after validating the Form,
         /// completeness rules and window.
         /// </summary>
-        //[Authorize(Roles = "Qa,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpPost("{id:int}/open")]
         public async Task<ActionResult> Open(int id, CancellationToken ct = default)
         {
@@ -124,7 +124,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Get the list of students who have already submitted an evaluation for this session.
         /// </summary>
-        //[Authorize(Roles = "Qa,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpGet("{id:int}/submissions")]
         public async Task<ActionResult<List<SessionSubmissionDto>>> GetSubmissions(
             int id,
@@ -136,7 +136,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Convenience endpoint: move a Draft/Open session to Closed.
         /// </summary>
-        //[Authorize(Roles = "Qa,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpPost("{id:int}/close")]
         public async Task<ActionResult> Close(int id, CancellationToken ct = default)
         {

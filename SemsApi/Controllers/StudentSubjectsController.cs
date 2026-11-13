@@ -33,12 +33,12 @@ namespace SemsApi.Controllers
             CancellationToken ct = default)
             => await _service.GetForStudentAsync(studentId, schoolYear, term, ct);
 
-        // [Authorize(Roles = "QA,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpPost("assign-subject")]
         public async Task<ActionResult> Assign([FromBody] AssignStudentToOfferingRequest request, CancellationToken ct = default)
             => await _service.AssignAsync(request, ct);
 
-        // [Authorize(Roles = "QA,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpDelete("enrollments/{enrollmentId:int}")]
         public async Task<ActionResult> Deactivate(int enrollmentId, CancellationToken ct = default)
             => await _service.DeactivateAsync(enrollmentId, ct);

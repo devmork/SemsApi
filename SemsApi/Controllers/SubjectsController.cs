@@ -21,17 +21,17 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<SubjectDto>> GetById(int id, CancellationToken ct = default)
             => await _service.GetByIdAsync(id, ct);
 
-        // [Authorize(Roles = "QA,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpPost]
         public async Task<ActionResult<SubjectDto>> Create([FromBody] CreateSubjectRequest request, CancellationToken ct = default)
             => await _service.CreateAsync(request, ct);
 
-        // [Authorize(Roles = "QA,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpPut("{id:int}")]
         public async Task<ActionResult<SubjectDto>> Update(int id, [FromBody] UpdateSubjectRequest request, CancellationToken ct = default)
             => await _service.UpdateAsync(id, request, ct);
 
-        // [Authorize(Roles = "QA,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id, CancellationToken ct = default)
             => await _service.DeleteAsync(id, ct);
