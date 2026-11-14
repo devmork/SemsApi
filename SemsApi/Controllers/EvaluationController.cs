@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
@@ -7,6 +7,7 @@ using SemsApi.DTO.Guidance;
 using SemsApi.DTO.Teacher;
 using SemsApi.Models;
 using SemsApi.Models.Eval;
+using SemsApi.Utilities;
 
 namespace SemsApi.Controllers
 {
@@ -99,45 +100,92 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Submit Guidance Evaluation (answers + log)
         /// </summary>
+        [Authorize(Roles = "Student")]
         [HttpPost("guidance/submit")]
-        public async Task<ActionResult> SubmitGuidance([FromBody] SubmitGuidanceRequest request)
+        public async Task<ActionResult> SubmitGuidance([FromBody] SubmitGuidanceRequest request, CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(request.StudentId) || request.Answers == null || !request.Answers.Any())
-            {
-                return BadRequest(new { message = "StudentId and at least one answer are required." });
-            }
+            if (request.Answers == null || request.Answers.Count == 0)
+                return BadRequest(new { message = "At least one answer is required." });
+
+            if (string.IsNullOrWhiteSpace(request.StudentId))
+                return BadRequest(new { message = "StudentId is required." });
+
+            if (string.IsNullOrWhiteSpace(request.Sy))
+                return BadRequest(new { message = "Sy is required." });
+
+            if (request.Term is < 1 or > 4)
+                return BadRequest(new { message = "Term must be between 1 and 4." });
+
+            var currentUserId = Utilities.UserContextResolver.GetUserId(HttpContext);
+            if (currentUserId is null)
+                return Unauthorized();
+
+            var student = await _context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.UserId == currentUserId.Value, ct);
+            if (student is null)
+                return Unauthorized(new { message = "Student profile not found for the current user." });
+
+            var requestedStudentId = request.StudentId.Trim();
+            var matchesCurrentStudent =
+                requestedStudentId == student.StudentId.ToString() ||
+                string.Equals(requestedStudentId, student.StudentNumber, StringComparison.OrdinalIgnoreCase);
+            if (!matchesCurrentStudent)
+                return Forbid();
+
+            var resolvedStudentId = !string.IsNullOrWhiteSpace(student.StudentNumber)
+                ? student.StudentNumber
+                : student.StudentId.ToString();
+
+            var questionPairs = request.Answers
+                .Select(a => new { a.CatNo, a.QnNo })
+                .Distinct()
+                .ToList();
+
+            if (request.Answers.Any(a => a.CatNo <= 0 || a.QnNo <= 0))
+                return BadRequest(new { message = "CatNo and QnNo must be positive integers." });
+
+            if (request.Answers.Any(a => a.RateVal < 0 || a.RateVal > 5))
+                return BadRequest(new { message = "RateVal must be between 0 and 5." });
+
+            var catNos = questionPairs.Select(q => q.CatNo).Distinct().ToList();
+            var validPairs = await _context.TeacherEvaluationResults
+                .AsNoTracking()
+                .Where(q => catNos.Contains(q.CatNo))
+                .Select(q => new { q.CatNo, q.QnNo })
+                .ToListAsync(ct);
+
+            var validSet = validPairs.Select(q => $"{q.CatNo}:{q.QnNo}").ToHashSet();
+            if (questionPairs.Any(q => !validSet.Contains($"{q.CatNo}:{q.QnNo}")))
+                return BadRequest(new { message = "One or more question IDs are invalid." });
 
             // Prevent duplicate submission
             var alreadySubmitted = await _context.GuidanceEvaluationLogs
-                .AnyAsync(l => l.StudentId == request.StudentId
+                .AnyAsync(l => l.StudentId == resolvedStudentId
                             && l.Sy == request.Sy
-                            && l.Term == request.Term);
+                            && l.Term == request.Term, ct);
 
             if (alreadySubmitted)
-            {
                 return Conflict(new { message = "This student has already submitted the evaluation for this term." });
-            }
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
 
             try
             {
-                // Insert Log
                 var log = new GuidanceEvaluationLog
                 {
-                    StudentId = request.StudentId,
+                    StudentId = resolvedStudentId,
                     Sy = request.Sy,
                     Term = request.Term,
                     DateEvaluated = DateTime.UtcNow
                 };
                 _context.GuidanceEvaluationLogs.Add(log);
 
-                // Insert Answers
                 foreach (var answer in request.Answers)
                 {
                     _context.GuidanceEvaluationResults.Add(new GuidanceEvaluationResult
                     {
-                        StudentId = request.StudentId,
+                        StudentId = resolvedStudentId,
                         CatNo = answer.CatNo,
                         QnNo = answer.QnNo,
                         Sy = request.Sy,
@@ -146,14 +194,14 @@ namespace SemsApi.Controllers
                     });
                 }
 
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _context.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
 
                 return Ok(new { message = "Guidance evaluation submitted successfully." });
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync(ct);
                 throw;
             }
         }
@@ -161,8 +209,9 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Submit Teacher Strength / Comment
         /// </summary>
+        [Authorize(Roles = "Student")]
         [HttpPost("teacher/strength")]
-        public async Task<ActionResult> SubmitTeacherStrength([FromBody] SubmitTeacherStrengthRequest request)
+        public async Task<ActionResult> SubmitTeacherStrength([FromBody] SubmitTeacherStrengthRequest request, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(request.TeacherId) ||
                 string.IsNullOrWhiteSpace(request.StudentId) ||
@@ -171,23 +220,58 @@ namespace SemsApi.Controllers
                 return BadRequest(new { message = "TeacherId, StudentId, and Comment are required." });
             }
 
-            if (!await _context.EvaluationTypes.AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId))
-            {
+            if (string.IsNullOrWhiteSpace(request.Sy))
+                return BadRequest(new { message = "Sy is required." });
+
+            if (request.Term is < 1 or > 4)
+                return BadRequest(new { message = "Term must be between 1 and 4." });
+
+            var currentUserId = Utilities.UserContextResolver.GetUserId(HttpContext);
+            if (currentUserId is null)
+                return Unauthorized();
+
+            var student = await _context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.UserId == currentUserId.Value, ct);
+            if (student is null)
+                return Unauthorized(new { message = "Student profile not found for the current user." });
+
+            var requestedStudentId = request.StudentId.Trim();
+            var matchesCurrentStudent =
+                requestedStudentId == student.StudentId.ToString() ||
+                string.Equals(requestedStudentId, student.StudentNumber, StringComparison.OrdinalIgnoreCase);
+            if (!matchesCurrentStudent)
+                return Forbid();
+
+            var resolvedStudentId = !string.IsNullOrWhiteSpace(student.StudentNumber)
+                ? student.StudentNumber
+                : student.StudentId.ToString();
+
+            if (!await _context.EvaluationTypes.AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId, ct))
                 return BadRequest(new { message = "Evaluation type not found." });
-            }
+
+            var requestedTeacherId = request.TeacherId.Trim();
+            int.TryParse(requestedTeacherId, out var teacherIdInt);
+            var teacherExists = await _context.Teachers
+                .AsNoTracking()
+                .AnyAsync(t =>
+                    (teacherIdInt > 0 && t.TeacherId == teacherIdInt) ||
+                    t.EmployeeNumber == requestedTeacherId, ct);
+            if (!teacherExists)
+                return BadRequest(new { message = "TeacherId does not exist." });
 
             var strength = new TeacherEvaluationStrength
             {
                 EvaluationTypeId = request.EvaluationTypeId,
-                TeacherId = request.TeacherId,
-                StudentId = request.StudentId,
+                TeacherId = requestedTeacherId,
+                StudentId = resolvedStudentId,
                 Sy = request.Sy,
                 Term = request.Term,
-                CommentName = request.Comment
+                CommentName = request.Comment.Trim()
             };
 
             _context.TeacherEvaluationStrengths.Add(strength);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
 
             return Ok(new { message = "Teacher strength comment saved successfully." });
         }

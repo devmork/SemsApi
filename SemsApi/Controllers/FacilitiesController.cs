@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO.Facility;
 using SemsApi.Interfaces;
 
@@ -25,7 +26,7 @@ namespace SemsApi.Controllers
             CancellationToken ct = default)
             => await _service.GetByIdAsync(id, ct);
 
-        //[Authorize(Roles = "QA,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpPost]
         public async Task<ActionResult<FacilityDto>> Create(
             [FromBody] CreateFacilityRequest request,
@@ -33,7 +34,7 @@ namespace SemsApi.Controllers
             CancellationToken ct = default)
             => await _service.CreateAsync(request, ct);
 
-        //[Authorize(Roles = "QA,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpPut("{id:int}")]
         public async Task<ActionResult<FacilityDto>> Update(
             int id, [FromBody] UpdateFacilityRequest request,
@@ -41,7 +42,7 @@ namespace SemsApi.Controllers
             CancellationToken ct = default)
             => await _service.UpdateAsync(id, request, ct);
 
-        //[Authorize(Roles = "QA,Admin")]
+        [Authorize(Roles = "QA,Admin")]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id,
             [FromQuery] int? debug_userId = null, //delete this this is only for development bypass

@@ -18,7 +18,7 @@ namespace SemsApi.Seeders
             },
             new Role
             {
-                Name = "Qa",
+                Name = "QA",
                 NormalizedName = "QA",
                 Description = "Quality Assurance",
                 IsActive = true,
