@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.Evaluation;
@@ -74,7 +75,7 @@ namespace SemsApi.Controllers
         /// Add a question to a category. QnNo is assigned automatically by the database -
         /// the caller only supplies QnName. Any QnNo sent in the request body is ignored.
         /// </summary>
-        //[Authorize(Roles = "QA")]
+        [Authorize(Roles = "QA")]
         [HttpPost]
         public async Task<ActionResult> Create(int catNo, [FromBody] EvaluationQuestionDto request)
         {
@@ -107,7 +108,7 @@ namespace SemsApi.Controllers
         /// Update a question's text. The route qnNo identifies it and never changes;
         /// only QnName is editable. Any QnNo sent in the request body is ignored.
         /// </summary>
-        //[Authorize(Roles = "QA")]
+        [Authorize(Roles = "QA")]
         [HttpPut("{qnNo:int}")]
         public async Task<ActionResult> Update(int catNo, int qnNo, [FromBody] EvaluationQuestionDto request)
         {
@@ -139,7 +140,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Delete a question from a category.
         /// </summary>
-        //[Authorize(Roles = "QA")]
+        [Authorize(Roles = "QA")]
         [HttpDelete("{qnNo:int}")]
         public async Task<ActionResult> Delete(int catNo, int qnNo)
         {
