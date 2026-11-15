@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO.Facility;
 using SemsApi.Interfaces;
 using SemsApi.Utilities;
@@ -6,7 +7,7 @@ using SemsApi.Utilities;
 namespace SemsApi.Controllers
 {
     [ApiController]
-    //[Authorize]
+    [Authorize]
     [Route("api/evaluation/facility-assignments")]
     public class FacilityEvaluationAssignmentsController : ControllerBase
     {
