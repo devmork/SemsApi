@@ -3,6 +3,7 @@ using Microsoft.SqlServer.Server;
 using SemsApi.DTO.Form;
 using SemsApi.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace SemsApi.Controllers
 {
@@ -63,8 +64,9 @@ namespace SemsApi.Controllers
         [HttpPost]
         public async Task<ActionResult> Create([FromBody] FormRequestDto request)
         {
-            var userIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub);
-            if (userIdClaim is null || !int.TryParse(userIdClaim.Value, out var userId))
+            var idValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                          ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            if (!int.TryParse(idValue, out var userId))
                 return Unauthorized(new { message = "Sign in to create a form." });
 
             return await _service.CreateAsync(request, userId);

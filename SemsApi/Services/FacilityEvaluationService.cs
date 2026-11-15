@@ -177,15 +177,16 @@ namespace SemsApi.Services
                     message = "RateVal must be between 0 and 5."
                 });
 
-            // Duplicate submission check
+            // Duplicate submission check (aligned with DB unique index: StudentId, FacilityId, SchoolYear, Term)
             var duplicate = await _context.FacilityEvaluationSubmissions.AnyAsync(s =>
                 s.StudentId == student.StudentId &&
                 s.FacilityId == facility.FacilityId &&
-                s.EvaluationSessionId == session.EvaluationSessionId, ct);
+                s.SchoolYear == session.SchoolYear &&
+                s.Term == session.Term, ct);
             if (duplicate)
                 return new ConflictObjectResult(new
                 {
-                    message = "This facility has already been evaluated for this session."
+                    message = "This facility has already been evaluated for this school year and term."
                 });
 
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
