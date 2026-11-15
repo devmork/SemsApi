@@ -1,4 +1,4 @@
-﻿namespace SemsApi.Configuration
+namespace SemsApi.Configuration
 {
     public class AuthOptions
     {
