@@ -18,7 +18,6 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<List<FacilityEvaluationAssignmentDto>>> GetMine(
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);
@@ -30,7 +29,6 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<List<FacilityEvaluationAssignmentDto>>> GetPending(
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);
@@ -42,7 +40,6 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<List<FacilityEvaluationAssignmentDto>>> GetCompleted(
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);
@@ -53,7 +50,6 @@ namespace SemsApi.Controllers
         [HttpPost("me/submit")]
         public async Task<ActionResult> Submit(
             [FromBody] SubmitFacilityEvaluationRequest request,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);

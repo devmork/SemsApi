@@ -30,7 +30,6 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<List<TeacherStudentDto>>> GetMyStudents(
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
-            [FromQuery] int? debug_userId = null,
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);

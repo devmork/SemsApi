@@ -7,17 +7,6 @@ namespace SemsApi.Utilities
     {
         public static int? GetUserId(HttpContext http)
         {
-            // --- DEVELOPMENT BYPASS ---
-            var env = http.RequestServices.GetService<IWebHostEnvironment>();
-            if (env != null && env.IsDevelopment())
-            {
-                var debugUserId = http.Request.Query["debug_userId"].FirstOrDefault();
-                if (int.TryParse(debugUserId, out var parsedId))
-                {
-                    return parsedId;
-                }
-            }
-            // --------------------------
             var raw = http.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                    ?? http.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
             return int.TryParse(raw, out var id) ? id : null;

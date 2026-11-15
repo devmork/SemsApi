@@ -35,7 +35,6 @@ namespace SemsApi.Controllers
             [FromQuery] int? term = null,
             [FromQuery] EvaluationSessionStatus? status = null,
             [FromQuery] bool onlyOpen = false,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             return await _service.GetAllAsync(
@@ -65,13 +64,11 @@ namespace SemsApi.Controllers
 
         /// <summary>
         /// Create a Draft session from an existing EvaluationForm. CreatedBy is captured from the
-        /// authenticated user (or the development debug_userId bypass).
         /// </summary>
         //[Authorize(Roles = "Qa,Admin")]
         [HttpPost]
         public async Task<ActionResult> Create(
             [FromBody] EvaluationSessionCreateRequest request,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);
@@ -89,7 +86,6 @@ namespace SemsApi.Controllers
         public async Task<ActionResult> Update(
             int id,
             [FromBody] EvaluationSessionUpdateRequest request,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             return await _service.UpdateAsync(
