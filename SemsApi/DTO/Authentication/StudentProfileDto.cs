@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.Authentication;
+namespace SemsApi.DTO.Authentication;
 
 /// <summary>
 /// The student-specific slice of the authenticated user's profile.

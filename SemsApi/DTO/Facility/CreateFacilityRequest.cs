@@ -1,4 +1,4 @@
-﻿
+
 namespace SemsApi.DTO.Facility
 {
     public class CreateFacilityRequest

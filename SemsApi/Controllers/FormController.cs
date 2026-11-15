@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.SqlServer.Server;
 using SemsApi.DTO.Form;
 using SemsApi.Interfaces;
@@ -44,7 +44,7 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get a single form by FormId, including its categories and the questions in each category.
+        /// Get a single EvaluationForm by FormId, including its categories and the questions in each category.
         /// </summary>
         [HttpGet("{formId:int}")]
         public async Task<ActionResult<FormDetailDto>> GetById(int formId)
@@ -57,7 +57,7 @@ namespace SemsApi.Controllers
         // ---------------------------------------------------------------------
 
         /// <summary>
-        /// Create a new form. CreatedBy is taken from the signed-in user's token, so a valid token is required.
+        /// Create a new EvaluationForm. CreatedBy is taken from the signed-in user's token, so a valid token is required.
         /// The evaluation type must have at least one category, and every category must have at least one question.
         /// </summary>
         //[Authorize(Roles = "QA")]
@@ -67,7 +67,7 @@ namespace SemsApi.Controllers
             var idValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
                           ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
             if (!int.TryParse(idValue, out var userId))
-                return Unauthorized(new { message = "Sign in to create a form." });
+                return Unauthorized(new { message = "Sign in to create a EvaluationForm." });
 
             return await _service.CreateAsync(request, userId);
         }
@@ -95,7 +95,7 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get a single form by its Code (e.g. PRE-G3, CAFETERIA, LIBRARY).
+        /// Get a single EvaluationForm by its Code (e.g. PRE-G3, CAFETERIA, LIBRARY).
         /// </summary>
         [HttpGet("by-code/{code}")]
         public async Task<ActionResult<FormDto>> GetByCode(string code)

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.EvaluationType;
@@ -152,7 +152,7 @@ namespace SemsApi.Services
             var inUse =
                 await _context.TeacherEvaluationCategories.AnyAsync(c => c.EvaluationTypeId == id)
                 || await _context.Forms.AnyAsync(f => f.EvaluationTypeId == id)
-                || await _context.TeacherEvaluationStrengths.AnyAsync(s => s.EvaluationTypeId == id);
+                || await _context.TeacherEvaluationComments.AnyAsync(s => s.EvaluationTypeId == id);
 
             if (inUse)
             {

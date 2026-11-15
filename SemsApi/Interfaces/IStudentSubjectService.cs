@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO.StudentSubjects;
 
 namespace SemsApi.Interfaces

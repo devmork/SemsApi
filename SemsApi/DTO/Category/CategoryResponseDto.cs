@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO
+namespace SemsApi.DTO
 {
     /// <summary>
     /// Response shape for category CRUD operations.

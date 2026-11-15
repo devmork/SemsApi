@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO.Form;
 
 namespace SemsApi.Interfaces

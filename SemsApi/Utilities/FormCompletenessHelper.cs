@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 
 namespace SemsApi.Utilities
@@ -6,7 +6,7 @@ namespace SemsApi.Utilities
     public static class FormCompletenessHelper
     {
         /// <summary>
-        /// A form is complete when its EvaluationType has at least one category,
+        /// A EvaluationForm is complete when its EvaluationType has at least one category,
         /// and every category has at least one question.
         /// Returns an error message, or null when complete.
         /// </summary>
@@ -26,7 +26,7 @@ namespace SemsApi.Utilities
                 return "This evaluation type has no categories yet. Create its categories and questions first.";
             }
 
-            var categoriesWithQuestions = await context.TeacherEvaluationResults
+            var categoriesWithQuestions = await context.EvaluationQuestions
                 .AsNoTracking()
                 .Where(q => categoryNos.Contains(q.CatNo))
                 .Select(q => q.CatNo)

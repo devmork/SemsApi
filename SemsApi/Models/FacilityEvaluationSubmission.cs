@@ -1,4 +1,4 @@
-﻿using SemsApi.Models.Eval;
+using SemsApi.Models.Eval;
 
 namespace SemsApi.Models
 {
@@ -20,7 +20,7 @@ namespace SemsApi.Models
         public EvaluationType EvaluationType { get; set; } = null!;
 
         public int? FormId { get; set; }
-        public Form? Form { get; set; }
+        public EvaluationForm? EvaluationForm { get; set; }
 
         public int? EvaluationSessionId { get; set; }
         public EvaluationSession? EvaluationSession { get; set; }

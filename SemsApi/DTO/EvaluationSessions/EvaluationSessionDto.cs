@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.EvaluationSessions
+namespace SemsApi.DTO.EvaluationSessions
 {
     public class EvaluationSessionDto
     {

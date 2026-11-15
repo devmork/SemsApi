@@ -1,4 +1,4 @@
-﻿namespace SemsApi.Utilities
+namespace SemsApi.Utilities
 {
     public static class RedirectUtility
     {

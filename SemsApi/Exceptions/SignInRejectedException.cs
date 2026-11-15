@@ -1,4 +1,4 @@
-﻿namespace SemsApi.Exceptions
+namespace SemsApi.Exceptions
 {
     public static class SignInErrorCodes
     {

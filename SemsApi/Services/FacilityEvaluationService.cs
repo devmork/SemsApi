@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.Facility;
@@ -29,13 +29,13 @@ namespace SemsApi.Services
 
             // Facility sessions currently open for this student's SY/Term
             var sessionsQuery = _context.EvaluationSessions.AsNoTracking()
-                .Include(s => s.Form).ThenInclude(f => f.EvaluationType)
+                .Include(s => s.EvaluationForm).ThenInclude(f => f.EvaluationType)
                 .Where(s =>
                     s.Status == EvaluationSessionStatus.Open &&
                     (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
                     (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now) &&
-                    s.Form.TargetType == "Facility" &&
-                    s.Form.IsActive == 1);
+                    s.EvaluationForm.TargetType == "Facility" &&
+                    s.EvaluationForm.IsActive == 1);
 
             if (!string.IsNullOrWhiteSpace(schoolYear))
                 sessionsQuery = sessionsQuery.Where(s => s.SchoolYear == schoolYear);
@@ -81,7 +81,7 @@ namespace SemsApi.Services
                         FacilityName = facility.FacilityName,
                         Description = facility.Description,
                         Location = facility.Location,
-                        EvaluationTypeId = session.Form.EvaluationTypeId,
+                        EvaluationTypeId = session.EvaluationForm.EvaluationTypeId,
                         FormId = session.FormId,
                         EvaluationSessionId = session.EvaluationSessionId,
                         SchoolYear = session.SchoolYear,
@@ -123,13 +123,13 @@ namespace SemsApi.Services
                 return new BadRequestObjectResult(new { message = "EvaluationSessionId is required for facility evaluations." });
 
             var session = await _context.EvaluationSessions.AsNoTracking()
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == request.EvaluationSessionId, ct);
 
             if (session is null)
                 return new BadRequestObjectResult(new { message = "Evaluation session not found." });
 
-            if (session.Form.TargetType != "Facility")
+            if (session.EvaluationForm.TargetType != "Facility")
                 return new BadRequestObjectResult(new
                 {
                     message = "The selected evaluation session is not a facility evaluation session."
@@ -144,10 +144,10 @@ namespace SemsApi.Services
                     message = "The submitted FormId does not match the evaluation session."
                 });
 
-            if (request.EvaluationTypeId != session.Form.EvaluationTypeId)
+            if (request.EvaluationTypeId != session.EvaluationForm.EvaluationTypeId)
                 return new BadRequestObjectResult(new
                 {
-                    message = "EvaluationTypeId does not match the evaluation session's form."
+                    message = "EvaluationTypeId does not match the evaluation session's EvaluationForm."
                 });
 
             if (!await _context.EvaluationTypes
@@ -156,7 +156,7 @@ namespace SemsApi.Services
 
             // Validate the questions belong to this evaluation type and exist
             var qnNos = request.Answers.Select(a => a.QnNo).Distinct().ToList();
-            var validQuestions = await _context.TeacherEvaluationResults.AsNoTracking()
+            var validQuestions = await _context.EvaluationQuestions.AsNoTracking()
                 .Where(q => qnNos.Contains(q.QnNo))
                 .Select(q => new { q.QnNo, q.CatNo, q.Category.EvaluationTypeId })
                 .ToListAsync(ct);
@@ -334,7 +334,7 @@ namespace SemsApi.Services
             }
 
             var qnNos = questionResults.Select(q => q.QnNo).ToList();
-            var questions = await _context.TeacherEvaluationResults.AsNoTracking()
+            var questions = await _context.EvaluationQuestions.AsNoTracking()
                 .Where(q => qnNos.Contains(q.QnNo)).ToListAsync(ct);
             var qMap = questions.ToDictionary(q => q.QnNo);
             foreach (var q in questionResults)
@@ -362,12 +362,12 @@ namespace SemsApi.Services
             int sessionId, CancellationToken ct = default)
         {
             var session = await _context.EvaluationSessions.AsNoTracking()
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == sessionId, ct);
             if (session is null)
                 return new NotFoundObjectResult(new { message = "Evaluation session not found." });
 
-            if (session.Form.TargetType != "Facility")
+            if (session.EvaluationForm.TargetType != "Facility")
                 return new BadRequestObjectResult(new
                 {
                     message = "This session is not a facility evaluation session."

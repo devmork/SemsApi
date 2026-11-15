@@ -1,10 +1,10 @@
-﻿using SemsApi.DTO;
+using SemsApi.DTO;
 using SemsApi.Models;
 
 namespace SemsApi.Utilities
 {
     /// <summary>
-    /// Shared helper methods for TeacherEvaluationCategory CRUD operations.
+    /// Shared helper methods for EvaluationCategory CRUD operations.
     /// </summary>
     public static class CategoryHelper
     {
@@ -14,9 +14,9 @@ namespace SemsApi.Utilities
         public const decimal MaxCatRate = 100.00m;
 
         /// <summary>
-        /// Maps a TeacherEvaluationCategory entity to the response DTO.
+        /// Maps a EvaluationCategory entity to the response DTO.
         /// </summary>
-        public static CategoryResponseDto MapToResponse(TeacherEvaluationCategory c) =>
+        public static CategoryResponseDto MapToResponse(EvaluationCategory c) =>
             new()
             {
                 CatNo = c.CatNo,

@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.TeacherSubjects
+namespace SemsApi.DTO.TeacherSubjects
 {
     public class TeacherSubjectDto
     {

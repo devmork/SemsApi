@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -118,7 +118,7 @@ namespace SemsApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "GuidanceEvaluationResult",
+                name: "GuidanceEvaluationAnswer",
                 schema: "Eval",
                 columns: table => new
                 {
@@ -133,7 +133,7 @@ namespace SemsApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_GuidanceEvaluationResult", x => x.Recno);
+                    table.PrimaryKey("PK_GuidanceEvaluationAnswer", x => x.Recno);
                 });
 
             migrationBuilder.CreateTable(
@@ -363,7 +363,7 @@ namespace SemsApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TeacherEvaluationCategory",
+                name: "EvaluationCategory",
                 schema: "Eval",
                 columns: table => new
                 {
@@ -376,9 +376,9 @@ namespace SemsApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TeacherEvaluationCategory", x => x.CatNo);
+                    table.PrimaryKey("PK_EvaluationCategory", x => x.CatNo);
                     table.ForeignKey(
-                        name: "FK_TeacherEvaluationCategory_EvaluationType_EvaluationTypeId",
+                        name: "FK_EvaluationCategory_EvaluationType_EvaluationTypeId",
                         column: x => x.EvaluationTypeId,
                         principalSchema: "Eval",
                         principalTable: "EvaluationType",
@@ -387,7 +387,7 @@ namespace SemsApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TeacherEvaluationStrength",
+                name: "TeacherEvaluationComment",
                 schema: "Eval",
                 columns: table => new
                 {
@@ -402,9 +402,9 @@ namespace SemsApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TeacherEvaluationStrength", x => x.Recno);
+                    table.PrimaryKey("PK_TeacherEvaluationComment", x => x.Recno);
                     table.ForeignKey(
-                        name: "FK_TeacherEvaluationStrength_EvaluationType_EvaluationTypeId",
+                        name: "FK_TeacherEvaluationComment_EvaluationType_EvaluationTypeId",
                         column: x => x.EvaluationTypeId,
                         principalSchema: "Eval",
                         principalTable: "EvaluationType",
@@ -514,7 +514,7 @@ namespace SemsApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "TeacherEvaluationResult",
+                name: "EvaluationQuestion",
                 schema: "Eval",
                 columns: table => new
                 {
@@ -525,12 +525,12 @@ namespace SemsApi.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TeacherEvaluationResult", x => x.QnNo);
+                    table.PrimaryKey("PK_EvaluationQuestion", x => x.QnNo);
                     table.ForeignKey(
-                        name: "FK_TeacherEvaluationResult_TeacherEvaluationCategory_CatNo",
+                        name: "FK_EvaluationQuestion_EvaluationCategory_CatNo",
                         column: x => x.CatNo,
                         principalSchema: "Eval",
-                        principalTable: "TeacherEvaluationCategory",
+                        principalTable: "EvaluationCategory",
                         principalColumn: "CatNo",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -948,21 +948,21 @@ namespace SemsApi.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_TeacherEvaluationCategory_EvaluationTypeId",
+                name: "IX_EvaluationCategory_EvaluationTypeId",
                 schema: "Eval",
-                table: "TeacherEvaluationCategory",
+                table: "EvaluationCategory",
                 column: "EvaluationTypeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TeacherEvaluationResult_CatNo",
+                name: "IX_EvaluationQuestion_CatNo",
                 schema: "Eval",
-                table: "TeacherEvaluationResult",
+                table: "EvaluationQuestion",
                 column: "CatNo");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TeacherEvaluationStrength_EvaluationTypeId",
+                name: "IX_TeacherEvaluationComment_EvaluationTypeId",
                 schema: "Eval",
-                table: "TeacherEvaluationStrength",
+                table: "TeacherEvaluationComment",
                 column: "EvaluationTypeId");
 
             migrationBuilder.CreateIndex(
@@ -1048,7 +1048,7 @@ namespace SemsApi.Migrations
                 schema: "Eval");
 
             migrationBuilder.DropTable(
-                name: "GuidanceEvaluationResult",
+                name: "GuidanceEvaluationAnswer",
                 schema: "Eval");
 
             migrationBuilder.DropTable(
@@ -1065,11 +1065,11 @@ namespace SemsApi.Migrations
                 schema: "Eval");
 
             migrationBuilder.DropTable(
-                name: "TeacherEvaluationResult",
+                name: "EvaluationQuestion",
                 schema: "Eval");
 
             migrationBuilder.DropTable(
-                name: "TeacherEvaluationStrength",
+                name: "TeacherEvaluationComment",
                 schema: "Eval");
 
             migrationBuilder.DropTable(
@@ -1084,7 +1084,7 @@ namespace SemsApi.Migrations
                 schema: "Eval");
 
             migrationBuilder.DropTable(
-                name: "TeacherEvaluationCategory",
+                name: "EvaluationCategory",
                 schema: "Eval");
 
             migrationBuilder.DropTable(

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.EvaluationAssignments;
@@ -62,7 +62,7 @@ namespace SemsApi.Services
                 submissionMap.TryGetValue(o.SubjectOfferingId, out var sub);
 
                 // Prefer an open EvaluationSession for the offering's SY + Term.
-                // Falls back to the legacy grade-level Form resolution when no session exists.
+                // Falls back to the legacy grade-level EvaluationForm resolution when no session exists.
                 EvaluationSession? openSession = null;
                 if (sub is null)
                 {
@@ -70,7 +70,7 @@ namespace SemsApi.Services
                 }
 
                 var evaluationTypeId = sub?.EvaluationTypeId
-                    ?? openSession?.Form.EvaluationTypeId
+                    ?? openSession?.EvaluationForm.EvaluationTypeId
                     ?? await ResolveEvaluationTypeIdAsync(o.GradeLevel, ct);
 
                 var formId = sub?.FormId
@@ -142,7 +142,7 @@ namespace SemsApi.Services
             {
                 session = await _context.EvaluationSessions
                     .AsNoTracking()
-                    .Include(s => s.Form)
+                    .Include(s => s.EvaluationForm)
                     .FirstOrDefaultAsync(
                         s => s.EvaluationSessionId == request.EvaluationSessionId.Value,
                         ct);
@@ -177,11 +177,11 @@ namespace SemsApi.Services
             }
 
             if (session is not null &&
-                request.EvaluationTypeId != session.Form.EvaluationTypeId)
+                request.EvaluationTypeId != session.EvaluationForm.EvaluationTypeId)
             {
                 return new BadRequestObjectResult(new
                 {
-                    message = "EvaluationTypeId does not match the evaluation session's form."
+                    message = "EvaluationTypeId does not match the evaluation session's EvaluationForm."
                 });
             }
 
@@ -190,7 +190,7 @@ namespace SemsApi.Services
 
             // Validate answer references
             var qnNos = request.Answers.Select(a => a.QnNo).Distinct().ToList();
-            var validQnNos = await _context.TeacherEvaluationResults.AsNoTracking()
+            var validQnNos = await _context.EvaluationQuestions.AsNoTracking()
                 .Where(q => qnNos.Contains(q.QnNo))
                 .Select(q => q.QnNo)
                 .ToListAsync(ct);
@@ -257,7 +257,7 @@ namespace SemsApi.Services
 
             return await _context.EvaluationSessions
                 .AsNoTracking()
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
                 .Where(s =>
                     s.Status == EvaluationSessionStatus.Open &&
@@ -265,16 +265,16 @@ namespace SemsApi.Services
                     s.Term == term &&
                     (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
                     (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now) &&
-                    s.Form.IsActive == 1 &&
-                    s.Form.TargetType == "SubjectTeacher" &&
-                    (s.Form.ProgramId == programId || s.Form.ProgramId == 0))
-                .OrderBy(s => s.Form.ProgramId == programId ? 0 : 1)
+                    s.EvaluationForm.IsActive == 1 &&
+                    s.EvaluationForm.TargetType == "SubjectTeacher" &&
+                    (s.EvaluationForm.ProgramId == programId || s.EvaluationForm.ProgramId == 0))
+                .OrderBy(s => s.EvaluationForm.ProgramId == programId ? 0 : 1)
                 .ThenByDescending(s => s.CreatedAtUtc)
                 .FirstOrDefaultAsync(ct);
         }
 
         /// <summary>
-        /// Finds an Open EvaluationSession for a specific Form + SY + Term.
+        /// Finds an Open EvaluationSession for a specific EvaluationForm + SY + Term.
         /// Used at submit time when the caller only supplied a FormId.
         /// </summary>
         private async Task<EvaluationSession?> FindOpenSessionForFormAsync(
@@ -287,7 +287,7 @@ namespace SemsApi.Services
 
             return await _context.EvaluationSessions
                 .AsNoTracking()
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                 .Where(s =>
                     s.FormId == formId &&
                     s.SchoolYear == schoolYear &&
@@ -320,7 +320,7 @@ namespace SemsApi.Services
             // ProgramId: 0=all, 1=PreK-G3, 2=G4-G6, 3=JHS-SHS
             var programId = GradeLevelToProgramId(gradeLevel);
 
-            var form = await _context.Forms.AsNoTracking()
+            var EvaluationForm = await _context.Forms.AsNoTracking()
                 .Where(f => f.IsActive == 1
                          && f.TargetType == "SubjectTeacher"
                          && (f.ProgramId == programId || f.ProgramId == 0))
@@ -329,7 +329,7 @@ namespace SemsApi.Services
                 .Select(f => (int?)f.FormId)
                 .FirstOrDefaultAsync(ct);
 
-            return form;
+            return EvaluationForm;
         }
     }
 }

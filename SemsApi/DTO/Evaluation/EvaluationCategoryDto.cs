@@ -1,6 +1,6 @@
-﻿namespace SemsApi.DTO.Evaluation
+namespace SemsApi.DTO.Evaluation
 {
-    public class EvaluationCategoryDto //Purpose: Category + nested questions used by /form
+    public class EvaluationCategoryDto //Purpose: Category + nested questions used by /EvaluationForm
     {
         public int CatNo { get; set; }
         public string? CatRn { get; set; }

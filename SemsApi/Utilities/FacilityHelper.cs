@@ -1,4 +1,4 @@
-﻿using SemsApi.DTO.Facility;
+using SemsApi.DTO.Facility;
 using SemsApi.Models;
 
 namespace SemsApi.Utilities

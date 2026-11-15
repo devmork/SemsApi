@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.Authentication
+namespace SemsApi.DTO.Authentication
 {
     public sealed record UserResponse(
         int Id,

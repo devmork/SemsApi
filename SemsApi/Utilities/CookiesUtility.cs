@@ -1,4 +1,4 @@
-﻿using Google.Apis.Auth.OAuth2.Responses;
+using Google.Apis.Auth.OAuth2.Responses;
 using SemsApi.DTO.Authentication;
 
 namespace SemsApi.Utilities

@@ -1,4 +1,4 @@
-﻿namespace SemsApi.Models
+namespace SemsApi.Models
 {
     /// <summary>
     /// A school facility that students can evaluate (Library, Canteen, Clinic, etc.).

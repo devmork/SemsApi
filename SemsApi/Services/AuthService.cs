@@ -1,4 +1,4 @@
-﻿using Azure;
+using Azure;
 using Google.Apis.Auth;
 using Google.Apis.Auth.OAuth2.Responses;
 using Microsoft.AspNetCore.Identity;

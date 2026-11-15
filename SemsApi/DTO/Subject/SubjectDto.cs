@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.Subject
+namespace SemsApi.DTO.Subject
 {
     public class SubjectDto
     {

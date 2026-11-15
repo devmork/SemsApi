@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO;
 using SemsApi.Interfaces;
 
 namespace SemsApi.Controllers
 {
     /// <summary>
-    /// Dedicated controller for TeacherEvaluationCategory CRUD operations.
+    /// Dedicated controller for EvaluationCategory CRUD operations.
     /// All logic lives in ICategoryService; this controller only handles HTTP concerns.
     /// A category belongs to one evaluation type, and its CatNo is unique across all evaluation types.
     /// </summary>

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
@@ -23,9 +23,9 @@ namespace SemsApi.Controllers
 
         /// <summary>
         /// Get the categories and questions of an evaluation type.
-        /// Example: /api/evaluation/form?evaluationTypeId=2
+        /// Example: /api/evaluation/EvaluationForm?evaluationTypeId=2
         /// </summary>
-        [HttpGet("form")]
+        [HttpGet("EvaluationForm")]
         public async Task<ActionResult<List<EvaluationCategoryDto>>> GetForm(
             [FromQuery] int evaluationTypeId)
         {
@@ -40,7 +40,7 @@ namespace SemsApi.Controllers
 
             var catNos = categories.Select(c => c.CatNo).ToList();
 
-            var questions = await _context.TeacherEvaluationResults
+            var questions = await _context.EvaluationQuestions
                 .AsNoTracking()
                 .Where(q => catNos.Contains(q.CatNo))
                 .OrderBy(q => q.CatNo)
@@ -74,7 +74,7 @@ namespace SemsApi.Controllers
             [FromQuery] int? evaluationTypeId = null,
             [FromQuery] int? catNo = null)
         {
-            var query = _context.TeacherEvaluationResults.AsNoTracking().AsQueryable();
+            var query = _context.EvaluationQuestions.AsNoTracking().AsQueryable();
 
             if (evaluationTypeId.HasValue)
                 query = query.Where(q => q.Category.EvaluationTypeId == evaluationTypeId.Value);
@@ -102,7 +102,7 @@ namespace SemsApi.Controllers
         [HttpPost("guidance/submit")]
         public async Task<ActionResult> SubmitGuidance([FromBody] SubmitGuidanceRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.StudentId) || request.Answers == null || !request.Answers.Any())
+            if (request.StudentId <= 0 || request.Answers == null || !request.Answers.Any())
             {
                 return BadRequest(new { message = "StudentId and at least one answer are required." });
             }
@@ -135,7 +135,7 @@ namespace SemsApi.Controllers
                 // Insert Answers
                 foreach (var answer in request.Answers)
                 {
-                    _context.GuidanceEvaluationResults.Add(new GuidanceEvaluationResult
+                    _context.GuidanceEvaluationAnswers.Add(new GuidanceEvaluationAnswer
                     {
                         StudentId = request.StudentId,
                         CatNo = answer.CatNo,
@@ -164,8 +164,8 @@ namespace SemsApi.Controllers
         [HttpPost("teacher/strength")]
         public async Task<ActionResult> SubmitTeacherStrength([FromBody] SubmitTeacherStrengthRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.TeacherId) ||
-                string.IsNullOrWhiteSpace(request.StudentId) ||
+            if (request.TeacherId <= 0 ||
+                request.StudentId <= 0 ||
                 string.IsNullOrWhiteSpace(request.Comment))
             {
                 return BadRequest(new { message = "TeacherId, StudentId, and Comment are required." });
@@ -176,7 +176,7 @@ namespace SemsApi.Controllers
                 return BadRequest(new { message = "Evaluation type not found." });
             }
 
-            var strength = new TeacherEvaluationStrength
+            var strength = new TeacherEvaluationComment
             {
                 EvaluationTypeId = request.EvaluationTypeId,
                 TeacherId = request.TeacherId,
@@ -186,7 +186,7 @@ namespace SemsApi.Controllers
                 CommentName = request.Comment
             };
 
-            _context.TeacherEvaluationStrengths.Add(strength);
+            _context.TeacherEvaluationComments.Add(strength);
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Teacher strength comment saved successfully." });
@@ -197,11 +197,11 @@ namespace SemsApi.Controllers
         /// </summary>
         [HttpGet("guidance/results/{studentId}")]
         public async Task<ActionResult> GetGuidanceResults(
-            string studentId,
+            int studentId,
             [FromQuery] string sy = "2025-2026",
             [FromQuery] int term = 1)
         {
-            var results = await _context.GuidanceEvaluationResults
+            var results = await _context.GuidanceEvaluationAnswers
                 .Where(r => r.StudentId == studentId && r.Sy == sy && r.Term == term)
                 .OrderBy(r => r.CatNo)
                 .ThenBy(r => r.QnNo)
@@ -215,14 +215,14 @@ namespace SemsApi.Controllers
         /// </summary>
         [HttpGet("teacher/strengths")]
         public async Task<ActionResult> GetTeacherStrengths(
-            [FromQuery] string? teacherId = null,
+            [FromQuery] int? teacherId = null,
             [FromQuery] string sy = "2025-2026",
             [FromQuery] int term = 1)
         {
-            var query = _context.TeacherEvaluationStrengths
+            var query = _context.TeacherEvaluationComments
                 .Where(s => s.Sy == sy && s.Term == term);
 
-            if (!string.IsNullOrWhiteSpace(teacherId))
+            if (teacherId.HasValue && teacherId.Value > 0)
                 query = query.Where(s => s.TeacherId == teacherId);
 
             var data = await query
