@@ -6,6 +6,7 @@ using SemsApi.Interfaces;
 namespace SemsApi.Controllers
 {
     [ApiController]
+    [Authorize(Roles = "QA,Admin")]
     [Route("api/subject-offerings")]
     public class SubjectOfferingsController : ControllerBase
     {
@@ -26,17 +27,14 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<SubjectOfferingDto>> GetById(int id, CancellationToken ct = default)
             => await _service.GetByIdAsync(id, ct);
 
-        [Authorize(Roles = "QA,Admin")]
         [HttpPost]
         public async Task<ActionResult<SubjectOfferingDto>> Create([FromBody] CreateSubjectOfferingRequest request, CancellationToken ct = default)
             => await _service.CreateAsync(request, ct);
 
-        [Authorize(Roles = "QA,Admin")]
         [HttpPut("{id:int}")]
         public async Task<ActionResult<SubjectOfferingDto>> Update(int id, [FromBody] UpdateSubjectOfferingRequest request, CancellationToken ct = default)
             => await _service.UpdateAsync(id, request, ct);
 
-        [Authorize(Roles = "QA,Admin")]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id, CancellationToken ct = default)
             => await _service.DeleteAsync(id, ct);

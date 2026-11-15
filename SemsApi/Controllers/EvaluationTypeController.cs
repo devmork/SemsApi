@@ -6,6 +6,7 @@ using SemsApi.Interfaces;
 namespace SemsApi.Controllers
 {
     [ApiController]
+    [Authorize(Roles = "QA,Admin")]
     [Route("api/evaluation/types")]
     public class EvaluationTypeController : ControllerBase
     {
@@ -37,7 +38,6 @@ namespace SemsApi.Controllers
         // CREATE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<ActionResult<EvaluationTypeResponseDto>> Create(
             [FromBody] EvaluationTypeRequestDto request)
@@ -49,7 +49,6 @@ namespace SemsApi.Controllers
         // UPDATE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "Admin")]
         [HttpPut("{id:int}")]
         public async Task<ActionResult<EvaluationTypeResponseDto>> Update(
             int id,
@@ -62,7 +61,6 @@ namespace SemsApi.Controllers
         // DELETE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "Admin")]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)
         {

@@ -7,6 +7,7 @@ using SemsApi.Interfaces;
 namespace SemsApi.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/subjects")]
     public class SubjectsController : ControllerBase
     {

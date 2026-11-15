@@ -11,6 +11,7 @@ namespace SemsApi.Controllers
     /// A category belongs to one evaluation type, and its CatNo is unique across all evaluation types.
     /// </summary>
     [ApiController]
+    [Authorize(Roles = "QA,Admin")]
     [Route("api/evaluation/categories")]
     public class CategoryController : ControllerBase
     {
@@ -48,7 +49,6 @@ namespace SemsApi.Controllers
         // CREATE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "QA")]
         [HttpPost]
         public async Task<ActionResult> Create([FromBody] CategoryRequestDto request)
         {
@@ -59,7 +59,6 @@ namespace SemsApi.Controllers
         // UPDATE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "QA")]
         [HttpPut("{catNo:int}")]
         public async Task<ActionResult> Update(int catNo, [FromBody] CategoryRequestDto request)
         {
@@ -70,7 +69,6 @@ namespace SemsApi.Controllers
         // DELETE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "QA")]
         [HttpDelete("{catNo:int}")]
         public async Task<ActionResult> Delete(int catNo)
         {

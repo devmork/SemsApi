@@ -26,6 +26,7 @@ namespace SemsApi.Controllers
         /// Get the categories and questions of an evaluation type.
         /// Example: /api/evaluation/form?evaluationTypeId=2
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpGet("form")]
         public async Task<ActionResult<List<EvaluationCategoryDto>>> GetForm(
             [FromQuery] int evaluationTypeId)
@@ -70,6 +71,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Get questions (optionally filtered by evaluation type and/or category)
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpGet("questions")]
         public async Task<ActionResult> GetQuestions(
             [FromQuery] int? evaluationTypeId = null,
@@ -279,6 +281,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Get Guidance results of a student
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpGet("guidance/results/{studentId}")]
         public async Task<ActionResult> GetGuidanceResults(
             string studentId,
@@ -297,6 +300,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Get Teacher Strength comments
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpGet("teacher/strengths")]
         public async Task<ActionResult> GetTeacherStrengths(
             [FromQuery] string? teacherId = null,
