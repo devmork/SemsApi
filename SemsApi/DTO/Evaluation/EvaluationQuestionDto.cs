@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.Evaluation
+namespace SemsApi.DTO.Evaluation
 {
     public class EvaluationQuestionDto //Purpose: Single question
     {

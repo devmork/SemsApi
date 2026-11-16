@@ -1,4 +1,4 @@
-﻿using SemsApi.DTO.Form;
+using SemsApi.DTO.Form;
 using SemsApi.Models.Eval;
 
 namespace SemsApi.Utilities
@@ -20,7 +20,7 @@ namespace SemsApi.Utilities
         public const string DefaultTargetType = "SubjectTeacher";
         public static readonly string[] AllowedTargetTypes = { "SubjectTeacher", "Facility" };
 
-        public static FormDto MapToDto(Form f, string evaluationTypeName) =>
+        public static FormDto MapToDto(EvaluationForm f, string evaluationTypeName) =>
             new()
             {
                 FormId = f.FormId,

@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.EvaluationType
+namespace SemsApi.DTO.EvaluationType
 {
     /// <summary>
     /// Request payload for creating or updating an EvaluationType.

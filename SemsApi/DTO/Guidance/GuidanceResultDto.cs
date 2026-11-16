@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.Guidance
+namespace SemsApi.DTO.Guidance
 {
     public class GuidanceResultDto //Purpose: Returning saved guidance evaluation results
     {

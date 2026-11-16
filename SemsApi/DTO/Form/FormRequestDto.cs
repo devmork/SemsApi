@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.Form
+namespace SemsApi.DTO.Form
 {
     public class FormRequestDto
     {

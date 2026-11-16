@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
@@ -56,7 +56,7 @@ namespace SemsApi.Services
             }
 
             var sessions = await query
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
                 .OrderByDescending(s => s.CreatedAtUtc)
                 .ThenByDescending(s => s.EvaluationSessionId)
@@ -90,7 +90,7 @@ namespace SemsApi.Services
         {
             var session = await _context.EvaluationSessions
                 .AsNoTracking()
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == id, ct);
 
@@ -111,12 +111,12 @@ namespace SemsApi.Services
             {
                 EvaluationSessionId = session.EvaluationSessionId,
                 FormId = session.FormId,
-                FormCode = session.Form.Code,
-                FormTitle = session.Form.Title,
-                EvaluationTypeId = session.Form.EvaluationTypeId,
-                EvaluationTypeName = session.Form.EvaluationType.EvaluationTypeName,
-                TargetType = session.Form.TargetType,
-                ProgramId = session.Form.ProgramId,
+                FormCode = session.EvaluationForm.Code,
+                FormTitle = session.EvaluationForm.Title,
+                EvaluationTypeId = session.EvaluationForm.EvaluationTypeId,
+                EvaluationTypeName = session.EvaluationForm.EvaluationType.EvaluationTypeName,
+                TargetType = session.EvaluationForm.TargetType,
+                ProgramId = session.EvaluationForm.ProgramId,
                 SchoolYear = session.SchoolYear,
                 Term = session.Term,
                 OpensAtUtc = session.OpensAtUtc,
@@ -128,7 +128,7 @@ namespace SemsApi.Services
                 UpdatedAtUtc = session.UpdatedAtUtc,
                 SubmissionCount = submissionCount,
                 IsAvailableNow = EvaluationSessionHelper.IsWithinWindow(session, DateTime.UtcNow),
-                Form = await BuildFormDetailAsync(session.Form, ct)
+                EvaluationForm = await BuildFormDetailAsync(session.EvaluationForm, ct)
             };
 
             return new OkObjectResult(detail);
@@ -143,13 +143,13 @@ namespace SemsApi.Services
             if (validationError is not null)
                 return new BadRequestObjectResult(new { message = validationError });
 
-            var form = await _context.Forms
+            var EvaluationForm = await _context.Forms
                 .AsNoTracking()
                 .Include(f => f.EvaluationType)
                 .FirstOrDefaultAsync(f => f.FormId == request.FormId, ct);
 
-            if (form is null)
-                return new BadRequestObjectResult(new { message = "Form not found." });
+            if (EvaluationForm is null)
+                return new BadRequestObjectResult(new { message = "EvaluationForm not found." });
 
             var schoolYear = request.SchoolYear.Trim();
 
@@ -165,7 +165,7 @@ namespace SemsApi.Services
             {
                 return new ConflictObjectResult(new
                 {
-                    message = "An evaluation session already exists for this Form, SchoolYear and Term. Archive the existing session before creating another."
+                    message = "An evaluation session already exists for this EvaluationForm, SchoolYear and Term. Archive the existing session before creating another."
                 });
             }
 
@@ -188,7 +188,7 @@ namespace SemsApi.Services
 
             var created = await _context.EvaluationSessions
                 .AsNoTracking()
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
                 .FirstAsync(s => s.EvaluationSessionId == entity.EvaluationSessionId, ct);
 
@@ -208,7 +208,7 @@ namespace SemsApi.Services
             CancellationToken ct = default)
         {
             var session = await _context.EvaluationSessions
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == id, ct);
 
@@ -348,7 +348,7 @@ namespace SemsApi.Services
         public async Task<ActionResult> OpenAsync(int id, CancellationToken ct = default)
         {
             var session = await _context.EvaluationSessions
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == id, ct);
 
@@ -407,7 +407,7 @@ namespace SemsApi.Services
         public async Task<ActionResult> CloseAsync(int id, CancellationToken ct = default)
         {
             var session = await _context.EvaluationSessions
-                .Include(s => s.Form)
+                .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == id, ct);
 
@@ -487,19 +487,19 @@ namespace SemsApi.Services
             EvaluationSession session,
             CancellationToken ct)
         {
-            var form = session.Form ?? await _context.Forms
+            var EvaluationForm = session.EvaluationForm ?? await _context.Forms
                 .AsNoTracking()
                 .Include(f => f.EvaluationType)
                 .FirstOrDefaultAsync(f => f.FormId == session.FormId, ct);
 
-            if (form is null)
-                return "Form not found.";
+            if (EvaluationForm is null)
+                return "EvaluationForm not found.";
 
-            if (form.IsActive != FormHelper.Active)
-                return "The form is inactive and cannot be opened for evaluation.";
+            if (EvaluationForm.IsActive != FormHelper.Active)
+                return "The EvaluationForm is inactive and cannot be opened for evaluation.";
 
             var incompleteError = await FormCompletenessHelper
-                .GetIncompleteFormErrorAsync(_context, form.EvaluationTypeId, ct);
+                .GetIncompleteFormErrorAsync(_context, EvaluationForm.EvaluationTypeId, ct);
 
             if (incompleteError is not null)
                 return incompleteError;
@@ -514,12 +514,12 @@ namespace SemsApi.Services
         }
 
         private async Task<FormDetailDto> BuildFormDetailAsync(
-            Form form,
+            EvaluationForm EvaluationForm,
             CancellationToken ct)
         {
             var categories = await _context.TeacherEvaluationCategories
                 .AsNoTracking()
-                .Where(c => c.EvaluationTypeId == form.EvaluationTypeId)
+                .Where(c => c.EvaluationTypeId == EvaluationForm.EvaluationTypeId)
                 .OrderBy(c => c.CatNo)
                 .ToListAsync(ct);
 
@@ -527,7 +527,7 @@ namespace SemsApi.Services
                 .Select(c => c.CatNo)
                 .ToList();
 
-            var questions = await _context.TeacherEvaluationResults
+            var questions = await _context.EvaluationQuestions
                 .AsNoTracking()
                 .Where(q => categoryNos.Contains(q.CatNo))
                 .OrderBy(q => q.CatNo)
@@ -536,18 +536,18 @@ namespace SemsApi.Services
 
             return new FormDetailDto
             {
-                FormId = form.FormId,
-                Code = form.Code,
-                GradeBand = form.GradeBand,
-                TargetType = form.TargetType,
-                ProgramId = form.ProgramId,
-                EvaluationTypeId = form.EvaluationTypeId,
-                EvaluationTypeName = form.EvaluationType.EvaluationTypeName,
-                Title = form.Title,
-                Description = form.Description,
-                CreatedBy = form.CreatedBy,
-                IsActive = form.IsActive,
-                CreatedAt = form.CreatedAt,
+                FormId = EvaluationForm.FormId,
+                Code = EvaluationForm.Code,
+                GradeBand = EvaluationForm.GradeBand,
+                TargetType = EvaluationForm.TargetType,
+                ProgramId = EvaluationForm.ProgramId,
+                EvaluationTypeId = EvaluationForm.EvaluationTypeId,
+                EvaluationTypeName = EvaluationForm.EvaluationType.EvaluationTypeName,
+                Title = EvaluationForm.Title,
+                Description = EvaluationForm.Description,
+                CreatedBy = EvaluationForm.CreatedBy,
+                IsActive = EvaluationForm.IsActive,
+                CreatedAt = EvaluationForm.CreatedAt,
                 Categories = categories.Select(c => new EvaluationCategoryDto
                 {
                     CatNo = c.CatNo,

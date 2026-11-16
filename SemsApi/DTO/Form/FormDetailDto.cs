@@ -1,9 +1,9 @@
-﻿using SemsApi.DTO.Evaluation;
+using SemsApi.DTO.Evaluation;
 
 namespace SemsApi.DTO.Form
 {
     /// <summary>
-    /// A form together with its categories and the questions inside each category.
+    /// A EvaluationForm together with its categories and the questions inside each category.
     /// Returned by GET api/evaluation/forms/{formId}.
     /// </summary>
     public class FormDetailDto : FormDto

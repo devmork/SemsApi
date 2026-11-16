@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using SemsApi.Configuration;
 using SemsApi.Data;
 using SemsApi.Interfaces;
 using SemsApi.Models;
@@ -23,6 +24,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
+builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
 
 builder.Services.AddIdentity<ApplicationUser, Role>(options =>
 {

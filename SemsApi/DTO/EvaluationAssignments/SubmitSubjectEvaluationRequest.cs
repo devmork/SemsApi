@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.EvaluationAssignments
+namespace SemsApi.DTO.EvaluationAssignments
 {
     public class SubmitSubjectEvaluationRequest
     {

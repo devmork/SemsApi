@@ -17,33 +17,28 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<List<FacilityDto>>> GetAll(
             [FromQuery] string? search = null,
             [FromQuery] bool? isActive = null,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
             => await _service.GetAllAsync(search, isActive, ct);
 
         [HttpGet("{id:int}")]
         public async Task<ActionResult<FacilityDto>> GetById(int id,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
             => await _service.GetByIdAsync(id, ct);
 
         [HttpPost]
         public async Task<ActionResult<FacilityDto>> Create(
             [FromBody] CreateFacilityRequest request,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
             => await _service.CreateAsync(request, ct);
 
         [HttpPut("{id:int}")]
         public async Task<ActionResult<FacilityDto>> Update(
             int id, [FromBody] UpdateFacilityRequest request,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
             => await _service.UpdateAsync(id, request, ct);
 
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
             => await _service.DeleteAsync(id, ct);
     }

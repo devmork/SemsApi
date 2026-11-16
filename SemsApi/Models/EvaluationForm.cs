@@ -1,14 +1,14 @@
-﻿namespace SemsApi.Models.Eval
+namespace SemsApi.Models.Eval
 {
     /// <summary>
-    /// A form (e.g. the Teacher Evaluation form for Grade 4 to 6, or the Canteen Evaluation form).
+    /// A EvaluationForm (e.g. the Teacher Evaluation EvaluationForm for Grade 4 to 6, or the Canteen Evaluation EvaluationForm).
     /// Its categories and questions are the categories (and their questions) that belong to its EvaluationType.
     /// </summary>
-    public class Form
+    public class EvaluationForm
     {
         public int FormId { get; set; }
 
-        /// <summary>0 = all students, 1 = Preschool to Grade 3, 2 = Grade 4 to 6, 3 = JHS to SHS. Decides which students get the form.</summary>
+        /// <summary>0 = all students, 1 = Preschool to Grade 3, 2 = Grade 4 to 6, 3 = JHS to SHS. Decides which students get the EvaluationForm.</summary>
         public int ProgramId { get; set; }
 
         /// <summary>Short unique code e.g. "PRE-G3", "G4-G6", "CAFETERIA".</summary>
@@ -20,14 +20,14 @@
         /// <summary>"SubjectTeacher" or "Facility". Defaults to "SubjectTeacher".</summary>
         public string TargetType { get; set; } = "SubjectTeacher";
 
-        /// <summary>FK to EvaluationType - decides which categories and questions the form contains.</summary>
+        /// <summary>FK to EvaluationType - decides which categories and questions the EvaluationForm contains.</summary>
         public int EvaluationTypeId { get; set; }
         public EvaluationType EvaluationType { get; set; } = null!;
 
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
 
-        /// <summary>FK to Users (AspNetUsers.Id) - the user who created the form.</summary>
+        /// <summary>FK to Users (AspNetUsers.Id) - the user who created the EvaluationForm.</summary>
         public int CreatedBy { get; set; }
         public ApplicationUser Creator { get; set; } = null!;
 

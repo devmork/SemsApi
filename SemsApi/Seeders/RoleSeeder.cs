@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using SemsApi.Models;
 
 namespace SemsApi.Seeders

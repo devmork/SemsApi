@@ -19,7 +19,6 @@ namespace SemsApi.Controllers
             [FromQuery] int? sessionId = null,
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
             => await _service.GetSummaryAsync(sessionId, schoolYear, term, ct);
 
@@ -29,14 +28,12 @@ namespace SemsApi.Controllers
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
             [FromQuery] int? sessionId = null,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
             => await _service.GetFacilityResultsAsync(facilityId, schoolYear, term, sessionId, ct);
 
         [HttpGet("session/{sessionId:int}/submissions")]
         public async Task<ActionResult<List<FacilitySessionSubmissionDto>>> GetSessionSubmissions(
             int sessionId,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
             => await _service.GetSessionSubmissionsAsync(sessionId, ct);
     }

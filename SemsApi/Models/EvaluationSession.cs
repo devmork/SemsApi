@@ -1,10 +1,10 @@
-﻿using SemsApi.Models.Eval;
+using SemsApi.Models.Eval;
 
 namespace SemsApi.Models
 {
     /// <summary>
-    /// A QA-managed, time-bounded instance of a Form for a specific SchoolYear + Term.
-    /// The Form remains the reusable template; the session controls when and for whom
+    /// A QA-managed, time-bounded instance of a EvaluationForm for a specific SchoolYear + Term.
+    /// The EvaluationForm remains the reusable template; the session controls when and for whom
     /// that template becomes an actionable evaluation opportunity.
     /// </summary>
     public class EvaluationSession
@@ -12,7 +12,7 @@ namespace SemsApi.Models
         public int EvaluationSessionId { get; set; }
 
         public int FormId { get; set; }
-        public Form Form { get; set; } = null!;
+        public EvaluationForm EvaluationForm { get; set; } = null!;
 
         /// <summary>School year, e.g. "2025-2026".</summary>
         public string SchoolYear { get; set; } = string.Empty;

@@ -1,4 +1,4 @@
-﻿using SemsApi.DTO.Authentication;
+using SemsApi.DTO.Authentication;
 using SemsApi.Models;
 
 namespace SemsApi.Interfaces

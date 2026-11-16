@@ -1,4 +1,4 @@
-﻿using SemsApi.DTO.EvaluationType;
+using SemsApi.DTO.EvaluationType;
 using SemsApi.Models;
 
 namespace SemsApi.Utilities

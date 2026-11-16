@@ -1,7 +1,7 @@
-﻿namespace SemsApi.DTO
+namespace SemsApi.DTO
 {
     /// <summary>
-    /// Request payload for creating or updating a TeacherEvaluationCategory.
+    /// Request payload for creating or updating a EvaluationCategory.
     /// CatNo is intentionally omitted - it is database-generated and unique across all evaluation types.
     /// </summary>
     public class CategoryRequestDto

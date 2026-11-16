@@ -1,6 +1,6 @@
-﻿namespace SemsApi.Models
+namespace SemsApi.Models
 {
-    public class TeacherEvaluationCategory
+    public class EvaluationCategory
     {
         /// <summary>Primary key, database-generated. Unique across ALL evaluation types (the "CategoryNumber").</summary>
         public int CatNo { get; set; }

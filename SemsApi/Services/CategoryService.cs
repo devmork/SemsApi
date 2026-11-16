@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO;
@@ -75,7 +75,7 @@ namespace SemsApi.Services
             if (!typeExists)
                 return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
-            var entity = new TeacherEvaluationCategory
+            var entity = new EvaluationCategory
             {
                 EvaluationTypeId = request.EvaluationTypeId!.Value,
                 CatRn = request.CatRn!.Trim(),
@@ -143,7 +143,7 @@ namespace SemsApi.Services
             if (category is null)
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
-            var hasDependentQuestions = await _context.TeacherEvaluationResults
+            var hasDependentQuestions = await _context.EvaluationQuestions
                 .AnyAsync(q => q.CatNo == catNo);
 
             if (hasDependentQuestions)

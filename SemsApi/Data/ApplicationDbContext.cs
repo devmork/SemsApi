@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Models;
@@ -18,13 +18,13 @@ namespace SemsApi.Data
         public DbSet<Teacher> Teachers => Set<Teacher>();
 
         // Evaluation tables
-        public DbSet<Form> Forms => Set<Form>();
+        public DbSet<EvaluationForm> Forms => Set<EvaluationForm>();
         public DbSet<EvaluationType> EvaluationTypes => Set<EvaluationType>();
-        public DbSet<TeacherEvaluationCategory> TeacherEvaluationCategories => Set<TeacherEvaluationCategory>();
-        public DbSet<TeacherEvaluationResult> TeacherEvaluationResults => Set<TeacherEvaluationResult>();
-        public DbSet<GuidanceEvaluationResult> GuidanceEvaluationResults => Set<GuidanceEvaluationResult>();
+        public DbSet<EvaluationCategory> TeacherEvaluationCategories => Set<EvaluationCategory>();
+        public DbSet<EvaluationQuestion> EvaluationQuestions => Set<EvaluationQuestion>();
+        public DbSet<GuidanceEvaluationAnswer> GuidanceEvaluationAnswers => Set<GuidanceEvaluationAnswer>();
         public DbSet<GuidanceEvaluationLog> GuidanceEvaluationLogs => Set<GuidanceEvaluationLog>();
-        public DbSet<TeacherEvaluationStrength> TeacherEvaluationStrengths => Set<TeacherEvaluationStrength>();
+        public DbSet<TeacherEvaluationComment> TeacherEvaluationComments => Set<TeacherEvaluationComment>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         // Subject / SubjectOffering / Enrollment
         public DbSet<Subject> Subjects => Set<Subject>();
@@ -176,9 +176,9 @@ namespace SemsApi.Data
                 e.HasIndex(x => x.EvaluationTypeName).IsUnique();
             });
 
-            modelBuilder.Entity<Form>(e =>
+            modelBuilder.Entity<EvaluationForm>(e =>
             {
-                e.ToTable("Forms", "Eval");
+                e.ToTable("EvaluationForms", "Eval");
                 e.HasKey(x => x.FormId);
                 e.Property(x => x.FormId).ValueGeneratedOnAdd();
 
@@ -204,9 +204,9 @@ namespace SemsApi.Data
                  .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity<TeacherEvaluationCategory>(e =>
+            modelBuilder.Entity<EvaluationCategory>(e =>
             {
-                e.ToTable("TeacherEvaluationCategory", "Eval");
+                e.ToTable("EvaluationCategory", "Eval");
                 e.HasKey(x => x.CatNo);
                 e.Property(x => x.CatNo).ValueGeneratedOnAdd();
                 e.Property(x => x.CatRn).HasMaxLength(10);
@@ -220,9 +220,9 @@ namespace SemsApi.Data
                  .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity<TeacherEvaluationResult>(e =>
+            modelBuilder.Entity<EvaluationQuestion>(e =>
             {
-                e.ToTable("TeacherEvaluationResult", "Eval");
+                e.ToTable("EvaluationQuestion", "Eval");
                 e.HasKey(x => x.QnNo);
                 e.Property(x => x.QnNo).ValueGeneratedOnAdd();
                 e.Property(x => x.QnName).HasColumnType("nvarchar(max)");
@@ -234,13 +234,13 @@ namespace SemsApi.Data
                  .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity<GuidanceEvaluationResult>(e =>
+            modelBuilder.Entity<GuidanceEvaluationAnswer>(e =>
             {
-                e.ToTable("GuidanceEvaluationResult", "Eval");
+                e.ToTable("GuidanceEvaluationAnswer", "Eval");
                 e.HasKey(x => x.Recno);
                 e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.StudentId).HasMaxLength(50);
                 e.Property(x => x.Sy).HasMaxLength(9);
+                e.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<GuidanceEvaluationLog>(e =>
@@ -248,17 +248,15 @@ namespace SemsApi.Data
                 e.ToTable("GuidanceEvaluationLog", "Eval");
                 e.HasKey(x => x.Recno);
                 e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.StudentId).HasMaxLength(10);
                 e.Property(x => x.Sy).HasMaxLength(9);
+                e.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity<TeacherEvaluationStrength>(e =>
+            modelBuilder.Entity<TeacherEvaluationComment>(e =>
             {
-                e.ToTable("TeacherEvaluationStrength", "Eval");
+                e.ToTable("TeacherEvaluationComment", "Eval");
                 e.HasKey(x => x.Recno);
                 e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.TeacherId).HasMaxLength(50);
-                e.Property(x => x.StudentId).HasMaxLength(50);
                 e.Property(x => x.Sy).HasMaxLength(50);
                 e.Property(x => x.CommentName).HasColumnType("nvarchar(max)");
                 e.HasIndex(x => x.EvaluationTypeId);
@@ -267,6 +265,8 @@ namespace SemsApi.Data
                  .WithMany()
                  .HasForeignKey(x => x.EvaluationTypeId)
                  .OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(x => x.Teacher).WithMany().HasForeignKey(x => x.TeacherId).OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
             });
 
             // =====================================================
@@ -347,7 +347,7 @@ namespace SemsApi.Data
                     .HasForeignKey(x => x.TeacherId).OnDelete(DeleteBehavior.Restrict);
                 e.HasOne(x => x.EvaluationType).WithMany()
                     .HasForeignKey(x => x.EvaluationTypeId).OnDelete(DeleteBehavior.Restrict);
-                e.HasOne(x => x.Form).WithMany()
+                e.HasOne(x => x.EvaluationForm).WithMany()
                     .HasForeignKey(x => x.FormId).OnDelete(DeleteBehavior.Restrict);
                 e.Property(x => x.EvaluationSessionId).IsRequired(false);
                 e.HasIndex(x => x.EvaluationSessionId);
@@ -379,7 +379,7 @@ namespace SemsApi.Data
                 e.Property(x => x.Status).HasConversion<int>().IsRequired();
                 e.Property(x => x.Notes).HasMaxLength(1000);
 
-                // One non-archived session per Form + SchoolYear + Term.
+                // One non-archived session per EvaluationForm + SchoolYear + Term.
                 // Archived sessions are historical and may repeat the same period.
                 e.HasIndex(x => new { x.FormId, x.SchoolYear, x.Term })
                     .IsUnique()
@@ -388,7 +388,7 @@ namespace SemsApi.Data
                 e.HasIndex(x => new { x.Status, x.OpensAtUtc, x.ClosesAtUtc });
                 e.HasIndex(x => x.CreatedBy);
 
-                e.HasOne(x => x.Form)
+                e.HasOne(x => x.EvaluationForm)
                     .WithMany()
                     .HasForeignKey(x => x.FormId)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -429,7 +429,7 @@ namespace SemsApi.Data
                     .HasForeignKey(x => x.FacilityId).OnDelete(DeleteBehavior.Restrict);
                 e.HasOne(x => x.EvaluationType).WithMany()
                     .HasForeignKey(x => x.EvaluationTypeId).OnDelete(DeleteBehavior.Restrict);
-                e.HasOne(x => x.Form).WithMany()
+                e.HasOne(x => x.EvaluationForm).WithMany()
                     .HasForeignKey(x => x.FormId).OnDelete(DeleteBehavior.Restrict);
                 e.HasOne(x => x.EvaluationSession).WithMany()
                     .HasForeignKey(x => x.EvaluationSessionId).OnDelete(DeleteBehavior.Restrict);

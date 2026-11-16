@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO.TeacherSubjects;
 using SemsApi.Interfaces;
@@ -29,7 +29,6 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<List<TeacherStudentDto>>> GetMyStudents(
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
-            [FromQuery] int? debug_userId = null,
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);

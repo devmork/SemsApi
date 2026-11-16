@@ -1,4 +1,4 @@
-﻿using Google.Apis.Auth;
+using Google.Apis.Auth;
 using Google.Apis.Auth.OAuth2.Responses;
 using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO.Authentication;

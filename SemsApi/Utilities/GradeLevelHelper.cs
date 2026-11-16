@@ -1,4 +1,4 @@
-﻿namespace SemsApi.Utilities;
+namespace SemsApi.Utilities;
 
 /// <summary>
 /// Converts the integer GradeLevel used by StudentTermEnrollment / SubjectOffering

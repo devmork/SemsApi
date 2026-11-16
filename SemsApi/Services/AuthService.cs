@@ -1,4 +1,4 @@
-﻿using Azure;
+using Azure;
 using Google.Apis.Auth;
 using Google.Apis.Auth.OAuth2.Responses;
 using Microsoft.AspNetCore.Identity;
@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SemsApi.Configuration;
 using SemsApi.Data;
 using SemsApi.DTO.ApplicationUser;
 using SemsApi.DTO.Authentication;
@@ -31,11 +32,13 @@ namespace SemsApi.Services
         private readonly ITokenService _tokenService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _dbContext;
-        public AuthService(ITokenService tokenService, UserManager<ApplicationUser> userManager, ApplicationDbContext dbContext)
+        private readonly IOptions<AuthOptions> _authOptions;
+        public AuthService(ITokenService tokenService, UserManager<ApplicationUser> userManager, ApplicationDbContext dbContext, IOptions<AuthOptions> authOptions)
         {
             _tokenService = tokenService;
             _userManager = userManager;
             _dbContext = dbContext;
+            _authOptions = authOptions;
         }
 
         public async Task<UserResponse?> GetCurrentUserAsync(int userId, CancellationToken ct = default)
@@ -253,6 +256,11 @@ namespace SemsApi.Services
 
             if (!string.Equals(principal.FindFirstValue("email_verified"), "true", StringComparison.OrdinalIgnoreCase))
                 throw new SignInRejectedException(SignInErrorCodes.EmailNotVerified);
+
+            var authorizedDomains = _authOptions.Value.AuthorizedDomains ?? Array.Empty<string>();
+            var domain = email.Split('@').LastOrDefault();
+            if (string.IsNullOrEmpty(domain) || !authorizedDomains.Contains(domain, StringComparer.OrdinalIgnoreCase))
+                throw new SignInRejectedException(SignInErrorCodes.DomainNotAllowed);
 
             var first = principal!.FindFirstValue(ClaimTypes.GivenName);
             var last = principal!.FindFirstValue(ClaimTypes.Surname);

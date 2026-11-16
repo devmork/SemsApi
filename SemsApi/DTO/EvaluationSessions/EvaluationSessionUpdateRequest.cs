@@ -1,4 +1,4 @@
-﻿using SemsApi.Models;
+using SemsApi.Models;
 
 namespace SemsApi.DTO.EvaluationSessions
 {

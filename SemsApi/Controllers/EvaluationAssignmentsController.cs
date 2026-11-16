@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SemsApi.DTO.EvaluationAssignments;
 using SemsApi.Interfaces;
@@ -18,7 +18,6 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<List<EvaluationAssignmentDto>>> GetMine(
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);
@@ -30,7 +29,6 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<List<EvaluationAssignmentDto>>> GetPending(
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);
@@ -42,7 +40,6 @@ namespace SemsApi.Controllers
         public async Task<ActionResult<List<EvaluationAssignmentDto>>> GetCompleted(
             [FromQuery] string? schoolYear = null,
             [FromQuery] int? term = null,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);
@@ -53,7 +50,6 @@ namespace SemsApi.Controllers
         [HttpPost("me/submit")]
         public async Task<ActionResult> Submit(
             [FromBody] SubmitSubjectEvaluationRequest request,
-            [FromQuery] int? debug_userId = null, //delete this this is only for development bypass
             CancellationToken ct = default)
         {
             var userId = UserContextResolver.GetUserId(HttpContext);

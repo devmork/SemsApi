@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.Subjects
+namespace SemsApi.DTO.Subjects
 {
     public class UpdateSubjectRequest
     {

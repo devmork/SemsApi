@@ -1,4 +1,4 @@
-﻿namespace SemsApi.DTO.SubjectOfferings
+namespace SemsApi.DTO.SubjectOfferings
 {
     public class SubjectOfferingDto
     {

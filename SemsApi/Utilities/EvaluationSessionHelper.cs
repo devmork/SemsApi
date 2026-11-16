@@ -1,4 +1,4 @@
-﻿using SemsApi.DTO.EvaluationSessions;
+using SemsApi.DTO.EvaluationSessions;
 using SemsApi.Models;
 using SemsApi.Models.Eval;
 
@@ -105,12 +105,12 @@ namespace SemsApi.Utilities
             {
                 EvaluationSessionId = session.EvaluationSessionId,
                 FormId = session.FormId,
-                FormCode = session.Form?.Code ?? string.Empty,
-                FormTitle = session.Form?.Title ?? string.Empty,
-                EvaluationTypeId = session.Form?.EvaluationTypeId ?? 0,
-                EvaluationTypeName = session.Form?.EvaluationType?.EvaluationTypeName ?? string.Empty,
-                TargetType = session.Form?.TargetType ?? string.Empty,
-                ProgramId = session.Form?.ProgramId ?? 0,
+                FormCode = session.EvaluationForm?.Code ?? string.Empty,
+                FormTitle = session.EvaluationForm?.Title ?? string.Empty,
+                EvaluationTypeId = session.EvaluationForm?.EvaluationTypeId ?? 0,
+                EvaluationTypeName = session.EvaluationForm?.EvaluationType?.EvaluationTypeName ?? string.Empty,
+                TargetType = session.EvaluationForm?.TargetType ?? string.Empty,
+                ProgramId = session.EvaluationForm?.ProgramId ?? 0,
                 SchoolYear = session.SchoolYear,
                 Term = session.Term,
                 OpensAtUtc = session.OpensAtUtc,

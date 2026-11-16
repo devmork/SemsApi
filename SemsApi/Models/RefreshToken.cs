@@ -1,4 +1,4 @@
-﻿namespace SemsApi.Models
+namespace SemsApi.Models
 {
     public class RefreshToken
     {
