@@ -5,7 +5,7 @@ namespace SemsApi.Utilities
 {
     public static class QuestionHelper
     {
-        public static EvaluationQuestionDto MapToDto(TeacherEvaluationResult question) =>
+        public static EvaluationQuestionDto MapToDto(EvaluationQuestion question) =>
             new()
             {
                 QnNo = question.QnNo,

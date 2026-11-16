@@ -109,7 +109,7 @@ namespace SemsApi.Controllers
             if (request.Answers == null || request.Answers.Count == 0)
                 return BadRequest(new { message = "At least one answer is required." });
 
-            if (string.IsNullOrWhiteSpace(request.StudentId))
+            if (request.StudentId <= 0)
                 return BadRequest(new { message = "StudentId is required." });
 
             if (string.IsNullOrWhiteSpace(request.Sy))
@@ -128,7 +128,7 @@ namespace SemsApi.Controllers
             if (student is null)
                 return Unauthorized(new { message = "Student profile not found for the current user." });
 
-            var requestedStudentId = request.StudentId.Trim();
+            var requestedStudentId = request.StudentId.ToString();
             var matchesCurrentStudent =
                 requestedStudentId == student.StudentId.ToString() ||
                 string.Equals(requestedStudentId, student.StudentNumber, StringComparison.OrdinalIgnoreCase);
@@ -151,7 +151,7 @@ namespace SemsApi.Controllers
                 return BadRequest(new { message = "RateVal must be between 0 and 5." });
 
             var catNos = questionPairs.Select(q => q.CatNo).Distinct().ToList();
-            var validPairs = await _context.TeacherEvaluationResults
+            var validPairs = await _context.EvaluationQuestions
                 .AsNoTracking()
                 .Where(q => catNos.Contains(q.CatNo))
                 .Select(q => new { q.CatNo, q.QnNo })
@@ -163,7 +163,7 @@ namespace SemsApi.Controllers
 
             // Prevent duplicate submission
             var alreadySubmitted = await _context.GuidanceEvaluationLogs
-                .AnyAsync(l => l.StudentId == resolvedStudentId
+                .AnyAsync(l => l.StudentId == student.StudentId
                             && l.Sy == request.Sy
                             && l.Term == request.Term, ct);
 
@@ -176,7 +176,7 @@ namespace SemsApi.Controllers
             {
                 var log = new GuidanceEvaluationLog
                 {
-                    StudentId = resolvedStudentId,
+                    StudentId = student.StudentId,
                     Sy = request.Sy,
                     Term = request.Term,
                     DateEvaluated = DateTime.UtcNow
@@ -187,7 +187,7 @@ namespace SemsApi.Controllers
                 {
                     _context.GuidanceEvaluationAnswers.Add(new GuidanceEvaluationAnswer
                     {
-                        StudentId = resolvedStudentId,
+                        StudentId = student.StudentId,
                         CatNo = answer.CatNo,
                         QnNo = answer.QnNo,
                         Sy = request.Sy,
@@ -238,7 +238,7 @@ namespace SemsApi.Controllers
             if (student is null)
                 return Unauthorized(new { message = "Student profile not found for the current user." });
 
-            var requestedStudentId = request.StudentId.Trim();
+            var requestedStudentId = request.StudentId.ToString();
             var matchesCurrentStudent =
                 requestedStudentId == student.StudentId.ToString() ||
                 string.Equals(requestedStudentId, student.StudentNumber, StringComparison.OrdinalIgnoreCase);
@@ -252,7 +252,7 @@ namespace SemsApi.Controllers
             if (!await _context.EvaluationTypes.AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId, ct))
                 return BadRequest(new { message = "Evaluation type not found." });
 
-            var requestedTeacherId = request.TeacherId.Trim();
+            var requestedTeacherId = request.TeacherId.ToString();
             int.TryParse(requestedTeacherId, out var teacherIdInt);
             var teacherExists = await _context.Teachers
                 .AsNoTracking()
@@ -265,14 +265,14 @@ namespace SemsApi.Controllers
             var strength = new TeacherEvaluationComment
             {
                 EvaluationTypeId = request.EvaluationTypeId,
-                TeacherId = requestedTeacherId,
-                StudentId = resolvedStudentId,
+                TeacherId = request.TeacherId,
+                StudentId = student.StudentId,
                 Sy = request.Sy,
                 Term = request.Term,
                 CommentName = request.Comment.Trim()
             };
 
-            _context.TeacherEvaluationStrengths.Add(strength);
+            _context.TeacherEvaluationComments.Add(strength);
             await _context.SaveChangesAsync(ct);
 
             return Ok(new { message = "Teacher strength comment saved successfully." });

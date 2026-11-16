@@ -25,7 +25,7 @@ namespace SemsApi.Services
             if (!await CategoryExistsAsync(catNo))
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
-            var data = await _context.TeacherEvaluationResults
+            var data = await _context.EvaluationQuestions
                 .AsNoTracking()
                 .Where(q => q.CatNo == catNo)
                 .OrderBy(q => q.QnNo)
@@ -61,13 +61,13 @@ namespace SemsApi.Services
                 return new BadRequestObjectResult(new { message = validationError });
 
             var qnName = request.QnName!.Trim();
-            var entity = new TeacherEvaluationResult
+            var entity = new EvaluationQuestion
             {
                 CatNo = catNo,
                 QnName = qnName
             };
 
-            _context.TeacherEvaluationResults.Add(entity);
+            _context.EvaluationQuestions.Add(entity);
             await _context.SaveChangesAsync();
 
             return new CreatedAtActionResult(
@@ -109,7 +109,7 @@ namespace SemsApi.Services
             if (question is null)
                 return new NotFoundObjectResult(new { message = "Question not found." });
 
-            _context.TeacherEvaluationResults.Remove(question);
+            _context.EvaluationQuestions.Remove(question);
             await _context.SaveChangesAsync();
 
             return new NoContentResult();
@@ -120,11 +120,11 @@ namespace SemsApi.Services
                 .AsNoTracking()
                 .AnyAsync(c => c.CatNo == catNo);
 
-        private Task<TeacherEvaluationResult?> FindQuestionAsync(int catNo, int qnNo, bool track)
+        private Task<EvaluationQuestion?> FindQuestionAsync(int catNo, int qnNo, bool track)
         {
             var query = track
-                ? _context.TeacherEvaluationResults.AsQueryable()
-                : _context.TeacherEvaluationResults.AsNoTracking();
+                ? _context.EvaluationQuestions.AsQueryable()
+                : _context.EvaluationQuestions.AsNoTracking();
 
             return query.FirstOrDefaultAsync(q => q.CatNo == catNo && q.QnNo == qnNo);
         }
