@@ -7,7 +7,7 @@ using SemsApi.Utilities;
 namespace SemsApi.Controllers
 {
     [ApiController]
-    //[Authorize]
+    [Authorize]
     [Route("api/evaluation/assignments")]
     public class EvaluationAssignmentsController : ControllerBase
     {

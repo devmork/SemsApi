@@ -7,13 +7,13 @@ using SemsApi.Utilities;
 namespace SemsApi.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/teachers")]
     public class TeachersController : ControllerBase
     {
         private readonly ITeacherSubjectService _service;
         public TeachersController(ITeacherSubjectService service) { _service = service; }
 
-        //[Authorize]
         [HttpGet("me/subjects")]
         public async Task<ActionResult<List<TeacherSubjectDto>>> GetMySubjects(
             [FromQuery] string? schoolYear = null,
@@ -25,7 +25,6 @@ namespace SemsApi.Controllers
             return await _service.GetSubjectsForCurrentUserAsync(userId.Value, schoolYear, term, ct);
         }
 
-        //[Authorize]
         [HttpGet("me/students")]
         public async Task<ActionResult<List<TeacherStudentDto>>> GetMyStudents(
             [FromQuery] string? schoolYear = null,
