@@ -155,6 +155,9 @@ namespace SemsApi.Services
                 return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
             // Validate the questions belong to this evaluation type and exist
+            if (request.Answers.Select(a => a.QnNo).Distinct().Count() != request.Answers.Count)
+                return new BadRequestObjectResult(new { message = "Duplicate question IDs are not allowed." });
+
             var qnNos = request.Answers.Select(a => a.QnNo).Distinct().ToList();
             var validQuestions = await _context.EvaluationQuestions.AsNoTracking()
                 .Where(q => qnNos.Contains(q.QnNo))
@@ -223,6 +226,11 @@ namespace SemsApi.Services
                     message = "Facility evaluation submitted successfully.",
                     submissionId = submission.SubmissionId
                 });
+            }
+            catch (DbUpdateException ex) when (DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            {
+                await tx.RollbackAsync(ct);
+                return new ConflictObjectResult(new { message = "This facility has already been evaluated for this session." });
             }
             catch
             {

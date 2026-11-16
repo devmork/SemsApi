@@ -85,7 +85,14 @@ namespace SemsApi.Services
             };
 
             _context.EvaluationTypes.Add(entity);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (Utilities.DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            {
+                return new ConflictObjectResult(new { message = "An evaluation type with the same name already exists." });
+            }
 
             return new CreatedResult(
                 $"/api/evaluation/types/{entity.EvaluationTypeId}",

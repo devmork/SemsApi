@@ -249,6 +249,7 @@ namespace SemsApi.Data
                 e.HasKey(x => x.Recno);
                 e.Property(x => x.Recno).ValueGeneratedOnAdd();
                 e.Property(x => x.Sy).HasMaxLength(9);
+                e.HasIndex(x => new { x.StudentId, x.Sy, x.Term }).IsUnique();
                 e.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
             });
 

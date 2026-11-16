@@ -99,7 +99,14 @@ namespace SemsApi.Services
             };
 
             _context.SubjectOfferings.Add(entity);
-            await _context.SaveChangesAsync(ct);
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (Utilities.DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            {
+                return new ConflictObjectResult(new { message = "A subject offering with this EdpCode/SY/Term already exists." });
+            }
 
             await _context.Entry(entity).Reference(x => x.Subject).LoadAsync(ct);
             if (entity.TeacherId.HasValue)
