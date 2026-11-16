@@ -136,6 +136,7 @@ namespace SemsApi.Services
                 return new ConflictObjectResult(new { message = "This subject has already been evaluated." });
 
             // ---------- Resolve the evaluation session for this submission ----------
+            // A resolvable open session is required before accepting any submission.
             EvaluationSession? session = null;
 
             if (request.EvaluationSessionId.HasValue)
@@ -167,17 +168,38 @@ namespace SemsApi.Services
             }
             else if (request.FormId.HasValue)
             {
-                // Caller supplied a FormId but no session id: try to attach the matching open session
-                // for auditability. If none exists, submission still proceeds (legacy behaviour).
+                // Validate the client-supplied FormId before attempting to resolve a session.
+                var suppliedForm = await _context.Forms
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(f => f.FormId == request.FormId.Value, ct);
+
+                if (suppliedForm is null)
+                    return new BadRequestObjectResult(new { message = "Evaluation form not found." });
+
+                if (!string.Equals(suppliedForm.TargetType, "SubjectTeacher", StringComparison.Ordinal))
+                    return new BadRequestObjectResult(new { message = "The form is not for subject teacher evaluation." });
+
+                if (suppliedForm.EvaluationTypeId != request.EvaluationTypeId)
+                    return new BadRequestObjectResult(new { message = "EvaluationTypeId does not match the evaluation form." });
+
                 session = await FindOpenSessionForFormAsync(
                     request.FormId.Value,
                     offering.SchoolYear,
                     offering.Term,
                     ct);
+
+                if (session is null)
+                    return new BadRequestObjectResult(new { message = "No open evaluation session exists for this form." });
+            }
+            else
+            {
+                return new BadRequestObjectResult(new { message = "EvaluationSessionId is required." });
             }
 
-            if (session is not null &&
-                request.EvaluationTypeId != session.EvaluationForm.EvaluationTypeId)
+            if (session is null)
+                return new BadRequestObjectResult(new { message = "No open evaluation session exists for this submission." });
+
+            if (request.EvaluationTypeId != session.EvaluationForm.EvaluationTypeId)
             {
                 return new BadRequestObjectResult(new
                 {
