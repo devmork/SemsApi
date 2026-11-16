@@ -117,7 +117,25 @@ namespace SemsApi.Services
             if (!typeExists)
                 return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
-            category.EvaluationTypeId = request.EvaluationTypeId!.Value;
+            var newEvaluationTypeId = request.EvaluationTypeId!.Value;
+            if (category.EvaluationTypeId != newEvaluationTypeId)
+            {
+                var hasFormsForOldType = await _context.Forms
+                    .AnyAsync(f => f.EvaluationTypeId == category.EvaluationTypeId);
+
+                var hasSessionsForOldType = await _context.EvaluationSessions
+                    .AnyAsync(s => s.EvaluationForm.EvaluationTypeId == category.EvaluationTypeId);
+
+                if (hasFormsForOldType || hasSessionsForOldType)
+                {
+                    return new ConflictObjectResult(new
+                    {
+                        message = "Cannot reassign this category because forms or evaluation sessions already reference its current evaluation type."
+                    });
+                }
+            }
+
+            category.EvaluationTypeId = newEvaluationTypeId;
             category.CatRn = request.CatRn!.Trim();
             category.CatName = request.CatName!.Trim();
             category.CatRate = Math.Round(request.CatRate!.Value, 2);

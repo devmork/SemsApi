@@ -139,6 +139,9 @@ namespace SemsApi.Controllers
                 ? student.StudentNumber
                 : student.StudentId.ToString();
 
+            if (request.Answers.Select(a => a.QnNo).Distinct().Count() != request.Answers.Count)
+                return BadRequest(new { message = "Duplicate question IDs are not allowed." });
+
             var questionPairs = request.Answers
                 .Select(a => new { a.CatNo, a.QnNo })
                 .Distinct()
@@ -200,6 +203,11 @@ namespace SemsApi.Controllers
                 await transaction.CommitAsync(ct);
 
                 return Ok(new { message = "Guidance evaluation submitted successfully." });
+            }
+            catch (DbUpdateException ex) when (DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            {
+                await transaction.RollbackAsync(ct);
+                return Conflict(new { message = "This student has already submitted the evaluation for this term." });
             }
             catch
             {

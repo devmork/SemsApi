@@ -184,7 +184,17 @@ namespace SemsApi.Services
             };
 
             _context.EvaluationSessions.Add(entity);
-            await _context.SaveChangesAsync(ct);
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (Utilities.DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            {
+                return new ConflictObjectResult(new
+                {
+                    message = "An evaluation session already exists for this Form, SchoolYear and Term. Archive the existing session before creating another."
+                });
+            }
 
             var created = await _context.EvaluationSessions
                 .AsNoTracking()
@@ -328,10 +338,21 @@ namespace SemsApi.Services
                 });
             }
 
-            var hasSubmissions = await _context.TeacherEvaluationSubmissions
+            var hasTeacherSubmissions = await _context.TeacherEvaluationSubmissions
                 .AnyAsync(s => s.EvaluationSessionId == id, ct);
 
-            if (hasSubmissions)
+            if (hasTeacherSubmissions)
+            {
+                return new ConflictObjectResult(new
+                {
+                    message = "Cannot delete this evaluation session because submissions already reference it. Archive it instead."
+                });
+            }
+
+            var hasFacilitySubmissions = await _context.FacilityEvaluationSubmissions
+                .AnyAsync(s => s.EvaluationSessionId == id, ct);
+
+            if (hasFacilitySubmissions)
             {
                 return new ConflictObjectResult(new
                 {

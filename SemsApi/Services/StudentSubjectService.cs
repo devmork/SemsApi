@@ -52,7 +52,14 @@ namespace SemsApi.Services
                 existing.Status = "Enrolled";
                 existing.DroppedAtUtc = null;
                 existing.EnrolledAtUtc = DateTime.UtcNow;
-                await _context.SaveChangesAsync(ct);
+                try
+                {
+                    await _context.SaveChangesAsync(ct);
+                }
+                catch (DbUpdateException ex) when (Utilities.DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+                {
+                    return new ConflictObjectResult(new { message = "Student is already enrolled in this subject offering." });
+                }
                 return new OkObjectResult(new { message = "Enrollment reactivated.", data = Map(existing, offering) });
             }
 
@@ -63,7 +70,14 @@ namespace SemsApi.Services
                 Status = "Enrolled"
             };
             _context.StudentSubjectEnrollments.Add(entity);
-            await _context.SaveChangesAsync(ct);
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (Utilities.DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            {
+                return new ConflictObjectResult(new { message = "Student is already enrolled in this subject offering." });
+            }
             return new OkObjectResult(new { message = "Student enrolled successfully.", data = Map(entity, offering) });
         }
 

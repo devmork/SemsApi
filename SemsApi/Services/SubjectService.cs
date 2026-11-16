@@ -41,12 +41,25 @@ namespace SemsApi.Services
                 return new BadRequestObjectResult(new { message = "Code and Description are required." });
 
             var code = request.Code.Trim().ToUpperInvariant();
+            var description = request.Description.Trim();
+            if (code.Length > 100)
+                return new BadRequestObjectResult(new { message = "Code must not exceed 100 characters." });
+            if (description.Length > 300)
+                return new BadRequestObjectResult(new { message = "Description must not exceed 300 characters." });
+
             if (await _context.Subjects.AnyAsync(s => s.Code == code, ct))
                 return new ConflictObjectResult(new { message = "A subject with this Code already exists." });
 
-            var entity = new Subject { Code = code, Description = request.Description.Trim() };
+            var entity = new Subject { Code = code, Description = description };
             _context.Subjects.Add(entity);
-            await _context.SaveChangesAsync(ct);
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (Utilities.DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            {
+                return new ConflictObjectResult(new { message = "A subject with this Code already exists." });
+            }
             return new CreatedResult($"/api/subjects/{entity.SubjectId}", Map(entity));
         }
 
@@ -59,11 +72,17 @@ namespace SemsApi.Services
                 return new BadRequestObjectResult(new { message = "Code and Description are required." });
 
             var code = request.Code.Trim().ToUpperInvariant();
+            var description = request.Description.Trim();
+            if (code.Length > 100)
+                return new BadRequestObjectResult(new { message = "Code must not exceed 100 characters." });
+            if (description.Length > 300)
+                return new BadRequestObjectResult(new { message = "Description must not exceed 300 characters." });
+
             if (await _context.Subjects.AnyAsync(s => s.SubjectId != id && s.Code == code, ct))
                 return new ConflictObjectResult(new { message = "A subject with this Code already exists." });
 
             entity.Code = code;
-            entity.Description = request.Description.Trim();
+            entity.Description = description;
             if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
 
             await _context.SaveChangesAsync(ct);

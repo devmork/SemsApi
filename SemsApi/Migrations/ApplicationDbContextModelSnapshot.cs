@@ -589,7 +589,9 @@ namespace SemsApi.Migrations
 
                     b.HasKey("Recno");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId", "Sy", "Term")
+                        .IsUnique()
+                        .HasFilter("[Sy] IS NOT NULL AND [Term] IS NOT NULL");
 
                     b.ToTable("GuidanceEvaluationLog", "Eval");
                 });

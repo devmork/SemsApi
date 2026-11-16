@@ -1,6 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.SqlServer.Server;
 using SemsApi.Data;
 using SemsApi.DTO.Evaluation;
 using SemsApi.DTO.Form;
@@ -67,17 +66,17 @@ namespace SemsApi.Services
 
         public async Task<ActionResult<FormDetailDto>> GetByIdAsync(int formId, bool studentView = false)
         {
-            var EvaluationForm = await _context.Forms
+            var evaluationForm = await _context.Forms
                 .AsNoTracking()
                 .Include(f => f.EvaluationType)
                 .FirstOrDefaultAsync(f => f.FormId == formId);
 
-            if (EvaluationForm is null || (studentView && EvaluationForm.IsActive != FormHelper.Active))
+            if (evaluationForm is null || (studentView && evaluationForm.IsActive != FormHelper.Active))
                 return new NotFoundObjectResult(new { message = "EvaluationForm not found." });
 
             var categories = await _context.TeacherEvaluationCategories
                 .AsNoTracking()
-                .Where(c => c.EvaluationTypeId == EvaluationForm.EvaluationTypeId)
+                .Where(c => c.EvaluationTypeId == evaluationForm.EvaluationTypeId)
                 .OrderBy(c => c.CatNo)
                 .ToListAsync();
 
@@ -92,18 +91,18 @@ namespace SemsApi.Services
 
             var detail = new FormDetailDto
             {
-                FormId = EvaluationForm.FormId,
-                Code = EvaluationForm.Code,
-                GradeBand = EvaluationForm.GradeBand,
-                TargetType = EvaluationForm.TargetType,
-                ProgramId = EvaluationForm.ProgramId,
-                EvaluationTypeId = EvaluationForm.EvaluationTypeId,
-                EvaluationTypeName = EvaluationForm.EvaluationType.EvaluationTypeName,
-                Title = EvaluationForm.Title,
-                Description = EvaluationForm.Description,
-                CreatedBy = EvaluationForm.CreatedBy,
-                IsActive = EvaluationForm.IsActive,
-                CreatedAt = EvaluationForm.CreatedAt,
+                FormId = evaluationForm.FormId,
+                Code = evaluationForm.Code,
+                GradeBand = evaluationForm.GradeBand,
+                TargetType = evaluationForm.TargetType,
+                ProgramId = evaluationForm.ProgramId,
+                EvaluationTypeId = evaluationForm.EvaluationTypeId,
+                EvaluationTypeName = evaluationForm.EvaluationType.EvaluationTypeName,
+                Title = evaluationForm.Title,
+                Description = evaluationForm.Description,
+                CreatedBy = evaluationForm.CreatedBy,
+                IsActive = evaluationForm.IsActive,
+                CreatedAt = evaluationForm.CreatedAt,
                 Categories = categories.Select(c => new EvaluationCategoryDto
                 {
                     CatNo = c.CatNo,
@@ -154,7 +153,7 @@ namespace SemsApi.Services
 
             var codeExists = await _context.Forms.AnyAsync(f => f.Code == normalizedCode);
             if (codeExists)
-                return new ConflictObjectResult(new { message = "A EvaluationForm with this Code already exists." });
+                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
 
             var entity = new EvaluationForm
             {
@@ -171,7 +170,14 @@ namespace SemsApi.Services
             };
 
             _context.Forms.Add(entity);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            {
+                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
+            }
 
             return new CreatedResult(
                 $"/api/evaluation/forms/{entity.FormId}",
@@ -186,15 +192,15 @@ namespace SemsApi.Services
         {
             var normalizedCode = FormHelper.NormalizeCode(code);
 
-            var EvaluationForm = await _context.Forms
+            var evaluationForm = await _context.Forms
                 .AsNoTracking()
                 .Include(f => f.EvaluationType)
                 .FirstOrDefaultAsync(f => f.Code == normalizedCode);
 
-            if (EvaluationForm is null || (studentView && EvaluationForm.IsActive != FormHelper.Active))
+            if (evaluationForm is null || (studentView && evaluationForm.IsActive != FormHelper.Active))
                 return new NotFoundObjectResult(new { message = "EvaluationForm not found." });
 
-            return new OkObjectResult(FormHelper.MapToDto(EvaluationForm, EvaluationForm.EvaluationType.EvaluationTypeName));
+            return new OkObjectResult(FormHelper.MapToDto(evaluationForm, evaluationForm.EvaluationType.EvaluationTypeName));
         }
 
         // ---------------------------------------------------------------------
@@ -206,9 +212,9 @@ namespace SemsApi.Services
         /// </summary>
         public async Task<ActionResult> UpdateAsync(int formId, FormRequestDto request)
         {
-            var EvaluationForm = await _context.Forms.FirstOrDefaultAsync(f => f.FormId == formId);
+            var evaluationForm = await _context.Forms.FirstOrDefaultAsync(f => f.FormId == formId);
 
-            if (EvaluationForm is null)
+            if (evaluationForm is null)
                 return new NotFoundObjectResult(new { message = "EvaluationForm not found." });
 
             var validationError = FormHelper.Validate(request);
@@ -224,39 +230,47 @@ namespace SemsApi.Services
             if (evaluationType is null)
                 return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
-            var willBeActive = (request.IsActive ?? EvaluationForm.IsActive) == FormHelper.Active;
+            var willBeActive = (request.IsActive ?? evaluationForm.IsActive) == FormHelper.Active;
 
             // Re-check completeness when the EvaluationForm switches evaluation type or is/will be active.
-            if (evaluationTypeId != EvaluationForm.EvaluationTypeId || willBeActive)
+            if (evaluationTypeId != evaluationForm.EvaluationTypeId || willBeActive)
             {
                 var incompleteError = await GetIncompleteFormErrorAsync(evaluationTypeId);
                 if (incompleteError is not null)
                     return new BadRequestObjectResult(new { message = incompleteError });
             }
+
             var normalizedCode = FormHelper.NormalizeCode(request.Code!);
 
             var codeExists = await _context.Forms
                 .AnyAsync(f => f.Code == normalizedCode && f.FormId != formId);
             if (codeExists)
-                return new ConflictObjectResult(new { message = "A EvaluationForm with this Code already exists." });
+                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
 
-            EvaluationForm.Code = normalizedCode;
-            EvaluationForm.GradeBand = string.IsNullOrWhiteSpace(request.GradeBand) ? null : request.GradeBand.Trim();
-            EvaluationForm.TargetType = FormHelper.NormalizeTargetType(request.TargetType);
-            EvaluationForm.ProgramId = request.ProgramId!.Value;
-            EvaluationForm.EvaluationTypeId = evaluationTypeId;
-            EvaluationForm.Title = request.Title!.Trim();
-            EvaluationForm.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+            evaluationForm.Code = normalizedCode;
+            evaluationForm.GradeBand = string.IsNullOrWhiteSpace(request.GradeBand) ? null : request.GradeBand.Trim();
+            evaluationForm.TargetType = FormHelper.NormalizeTargetType(request.TargetType);
+            evaluationForm.ProgramId = request.ProgramId!.Value;
+            evaluationForm.EvaluationTypeId = evaluationTypeId;
+            evaluationForm.Title = request.Title!.Trim();
+            evaluationForm.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
 
             if (request.IsActive.HasValue)
-                EvaluationForm.IsActive = request.IsActive.Value;
+                evaluationForm.IsActive = request.IsActive.Value;
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            {
+                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
+            }
 
             return new OkObjectResult(new
             {
                 message = "EvaluationForm updated successfully.",
-                data = FormHelper.MapToDto(EvaluationForm, evaluationType.EvaluationTypeName)
+                data = FormHelper.MapToDto(evaluationForm, evaluationType.EvaluationTypeName)
             });
         }
 
@@ -266,12 +280,21 @@ namespace SemsApi.Services
 
         public async Task<ActionResult> DeleteAsync(int formId)
         {
-            var EvaluationForm = await _context.Forms.FirstOrDefaultAsync(f => f.FormId == formId);
+            var evaluationForm = await _context.Forms.FirstOrDefaultAsync(f => f.FormId == formId);
 
-            if (EvaluationForm is null)
+            if (evaluationForm is null)
                 return new NotFoundObjectResult(new { message = "EvaluationForm not found." });
 
-            _context.Forms.Remove(EvaluationForm);
+            if (await _context.EvaluationSessions.AnyAsync(s => s.FormId == formId))
+                return new ConflictObjectResult(new { message = "Cannot delete: form is referenced by evaluation sessions." });
+
+            if (await _context.TeacherEvaluationSubmissions.AnyAsync(s => s.FormId == formId))
+                return new ConflictObjectResult(new { message = "Cannot delete: form has teacher evaluation submissions." });
+
+            if (await _context.FacilityEvaluationSubmissions.AnyAsync(s => s.FormId == formId))
+                return new ConflictObjectResult(new { message = "Cannot delete: form has facility evaluation submissions." });
+
+            _context.Forms.Remove(evaluationForm);
             await _context.SaveChangesAsync();
 
             return new NoContentResult();
