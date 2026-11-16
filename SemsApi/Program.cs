@@ -84,7 +84,10 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            context.Token = context.Request.Cookies["ACCESS_TOKEN"];
+            if (context.Request.Cookies.TryGetValue("ACCESS_TOKEN", out var cookieToken) && !string.IsNullOrWhiteSpace(cookieToken))
+            {
+                context.Token = cookieToken;
+            }
             return Task.CompletedTask;
         }
     };
