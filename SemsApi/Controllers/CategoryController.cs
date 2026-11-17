@@ -8,7 +8,7 @@ namespace SemsApi.Controllers
     /// <summary>
     /// Dedicated controller for EvaluationCategory CRUD operations.
     /// All logic lives in ICategoryService; this controller only handles HTTP concerns.
-    /// A category belongs to one evaluation type, and its CatNo is unique across all evaluation types.
+    /// A category belongs to one evaluation type, and its CategoryId is unique across all evaluation types.
     /// </summary>
     [ApiController]
     [Authorize(Roles = "QA,Admin")]
@@ -37,12 +37,12 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get a single category by CatNo.
+        /// Get a single category by CategoryId.
         /// </summary>
-        [HttpGet("{catNo:int}")]
-        public async Task<ActionResult<CategoryResponseDto>> GetById(int catNo)
+        [HttpGet("{categoryId:int}")]
+        public async Task<ActionResult<CategoryResponseDto>> GetById(int categoryId)
         {
-            return await _service.GetByIdAsync(catNo);
+            return await _service.GetByIdAsync(categoryId);
         }
 
         // ---------------------------------------------------------------------
@@ -59,20 +59,20 @@ namespace SemsApi.Controllers
         // UPDATE
         // ---------------------------------------------------------------------
 
-        [HttpPut("{catNo:int}")]
-        public async Task<ActionResult> Update(int catNo, [FromBody] CategoryRequestDto request)
+        [HttpPut("{categoryId:int}")]
+        public async Task<ActionResult> Update(int categoryId, [FromBody] CategoryRequestDto request)
         {
-            return await _service.UpdateAsync(catNo, request);
+            return await _service.UpdateAsync(categoryId, request);
         }
 
         // ---------------------------------------------------------------------
         // DELETE
         // ---------------------------------------------------------------------
 
-        [HttpDelete("{catNo:int}")]
-        public async Task<ActionResult> Delete(int catNo)
+        [HttpDelete("{categoryId:int}")]
+        public async Task<ActionResult> Delete(int categoryId)
         {
-            return await _service.DeleteAsync(catNo);
+            return await _service.DeleteAsync(categoryId);
         }
     }
 }

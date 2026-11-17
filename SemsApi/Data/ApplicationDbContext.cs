@@ -22,8 +22,6 @@ namespace SemsApi.Data
         public DbSet<EvaluationType> EvaluationTypes => Set<EvaluationType>();
         public DbSet<EvaluationCategory> TeacherEvaluationCategories => Set<EvaluationCategory>();
         public DbSet<EvaluationQuestion> EvaluationQuestions => Set<EvaluationQuestion>();
-        public DbSet<GuidanceEvaluationAnswer> GuidanceEvaluationAnswers => Set<GuidanceEvaluationAnswer>();
-        public DbSet<GuidanceEvaluationLog> GuidanceEvaluationLogs => Set<GuidanceEvaluationLog>();
         public DbSet<TeacherEvaluationComment> TeacherEvaluationComments => Set<TeacherEvaluationComment>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         // Subject / SubjectOffering / Enrollment
@@ -207,11 +205,10 @@ namespace SemsApi.Data
             modelBuilder.Entity<EvaluationCategory>(e =>
             {
                 e.ToTable("EvaluationCategory", "Eval");
-                e.HasKey(x => x.CatNo);
-                e.Property(x => x.CatNo).ValueGeneratedOnAdd();
-                e.Property(x => x.CatRn).HasMaxLength(10);
-                e.Property(x => x.CatName).HasMaxLength(150);
-                e.Property(x => x.CatRate).HasColumnType("decimal(18,2)");
+                e.HasKey(x => x.CategoryId);
+                e.Property(x => x.CategoryId).ValueGeneratedOnAdd();
+                e.Property(x => x.CategoryName).HasMaxLength(150);
+                e.Property(x => x.CategoryRate).HasColumnType("decimal(18,2)");
                 e.HasIndex(x => x.EvaluationTypeId);
 
                 e.HasOne(x => x.EvaluationType)
@@ -223,34 +220,15 @@ namespace SemsApi.Data
             modelBuilder.Entity<EvaluationQuestion>(e =>
             {
                 e.ToTable("EvaluationQuestion", "Eval");
-                e.HasKey(x => x.QnNo);
-                e.Property(x => x.QnNo).ValueGeneratedOnAdd();
-                e.Property(x => x.QnName).HasColumnType("nvarchar(max)");
-                e.HasIndex(x => x.CatNo);
+                e.HasKey(x => x.QuestionId);
+                e.Property(x => x.QuestionId).ValueGeneratedOnAdd();
+                e.Property(x => x.QuestionName).HasColumnType("nvarchar(max)");
+                e.HasIndex(x => x.CategoryId);
 
                 e.HasOne(x => x.Category)
                  .WithMany()
-                 .HasForeignKey(x => x.CatNo)
+                 .HasForeignKey(x => x.CategoryId)
                  .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            modelBuilder.Entity<GuidanceEvaluationAnswer>(e =>
-            {
-                e.ToTable("GuidanceEvaluationAnswer", "Eval");
-                e.HasKey(x => x.Recno);
-                e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.Sy).HasMaxLength(9);
-                e.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
-            });
-
-            modelBuilder.Entity<GuidanceEvaluationLog>(e =>
-            {
-                e.ToTable("GuidanceEvaluationLog", "Eval");
-                e.HasKey(x => x.Recno);
-                e.Property(x => x.Recno).ValueGeneratedOnAdd();
-                e.Property(x => x.Sy).HasMaxLength(9);
-                e.HasIndex(x => new { x.StudentId, x.Sy, x.Term }).IsUnique();
-                e.HasOne(x => x.Student).WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<TeacherEvaluationComment>(e =>
@@ -364,7 +342,7 @@ namespace SemsApi.Data
                 e.ToTable("TeacherEvaluationAnswers", "Eval"); // <--- ADDED
                 e.HasKey(x => x.AnswerId);
                 e.Property(x => x.AnswerId).ValueGeneratedOnAdd(); // <--- ADDED
-                e.HasIndex(x => new { x.SubmissionId, x.QnNo }).IsUnique();
+                e.HasIndex(x => new { x.SubmissionId, x.QuestionId }).IsUnique();
                 e.HasOne(x => x.Submission).WithMany(s => s.Answers)
                     .HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
             });
@@ -439,7 +417,7 @@ namespace SemsApi.Data
                 e.ToTable("FacilityEvaluationAnswers", "Eval");
                 e.HasKey(x => x.AnswerId);
                 e.Property(x => x.AnswerId).ValueGeneratedOnAdd();
-                e.HasIndex(x => new { x.SubmissionId, x.QnNo }).IsUnique();
+                e.HasIndex(x => new { x.SubmissionId, x.QuestionId }).IsUnique();
                 e.HasOne(x => x.Submission).WithMany(s => s.Answers)
                     .HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
             });

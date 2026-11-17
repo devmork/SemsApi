@@ -18,7 +18,7 @@ namespace SemsApi.Utilities
             var categoryNos = await context.TeacherEvaluationCategories
                 .AsNoTracking()
                 .Where(c => c.EvaluationTypeId == evaluationTypeId)
-                .Select(c => c.CatNo)
+                .Select(c => c.CategoryId)
                 .ToListAsync(ct);
 
             if (categoryNos.Count == 0)
@@ -28,8 +28,8 @@ namespace SemsApi.Utilities
 
             var categoriesWithQuestions = await context.EvaluationQuestions
                 .AsNoTracking()
-                .Where(q => categoryNos.Contains(q.CatNo))
-                .Select(q => q.CatNo)
+                .Where(q => categoryNos.Contains(q.CategoryId))
+                .Select(q => q.CategoryId)
                 .Distinct()
                 .ToListAsync(ct);
 
@@ -39,7 +39,7 @@ namespace SemsApi.Utilities
 
             if (missing.Count > 0)
             {
-                return $"Every category needs at least one question. Categories without questions (CatNo): {string.Join(", ", missing)}.";
+                return $"Every category needs at least one question. Categories without questions (CategoryId): {string.Join(", ", missing)}.";
             }
 
             return null;

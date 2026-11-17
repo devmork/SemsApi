@@ -36,30 +36,29 @@ namespace SemsApi.Controllers
             var categories = await _context.TeacherEvaluationCategories
                 .AsNoTracking()
                 .Where(c => c.EvaluationTypeId == evaluationTypeId)
-                .OrderBy(c => c.CatNo)
+                .OrderBy(c => c.CategoryId)
                 .ToListAsync();
 
-            var catNos = categories.Select(c => c.CatNo).ToList();
+            var categoryIds = categories.Select(c => c.CategoryId).ToList();
 
             var questions = await _context.EvaluationQuestions
                 .AsNoTracking()
-                .Where(q => catNos.Contains(q.CatNo))
-                .OrderBy(q => q.CatNo)
-                .ThenBy(q => q.QnNo)
+                .Where(q => categoryIds.Contains(q.CategoryId))
+                .OrderBy(q => q.CategoryId)
+                .ThenBy(q => q.QuestionId)
                 .ToListAsync();
 
             var result = categories.Select(c => new EvaluationCategoryDto
             {
-                CatNo = c.CatNo,
-                CatRn = c.CatRn,
-                CatName = c.CatName,
-                CatRate = c.CatRate,
+                CategoryId = c.CategoryId,
+                CategoryName = c.CategoryName,
+                CategoryRate = c.CategoryRate,
                 Questions = questions
-                    .Where(q => q.CatNo == c.CatNo)
+                    .Where(q => q.CategoryId == c.CategoryId)
                     .Select(q => new EvaluationQuestionDto
                     {
-                        QnNo = q.QnNo,
-                        QnName = q.QnName
+                        QuestionId = q.QuestionId,
+                        QuestionName = q.QuestionName
                     })
                     .ToList()
             }).ToList();
@@ -74,24 +73,24 @@ namespace SemsApi.Controllers
         [HttpGet("questions")]
         public async Task<ActionResult> GetQuestions(
             [FromQuery] int? evaluationTypeId = null,
-            [FromQuery] int? catNo = null)
+            [FromQuery] int? categoryId = null)
         {
             var query = _context.EvaluationQuestions.AsNoTracking().AsQueryable();
 
             if (evaluationTypeId.HasValue)
                 query = query.Where(q => q.Category.EvaluationTypeId == evaluationTypeId.Value);
 
-            if (catNo.HasValue)
-                query = query.Where(q => q.CatNo == catNo.Value);
+            if (categoryId.HasValue)
+                query = query.Where(q => q.CategoryId == categoryId.Value);
 
             var data = await query
-                .OrderBy(q => q.CatNo)
-                .ThenBy(q => q.QnNo)
+                .OrderBy(q => q.CategoryId)
+                .ThenBy(q => q.QuestionId)
                 .Select(q => new
                 {
-                    q.CatNo,
-                    q.QnNo,
-                    q.QnName
+                    q.CategoryId,
+                    q.QuestionId,
+                    q.QuestionName
                 })
                 .ToListAsync();
 

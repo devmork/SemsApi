@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.Evaluation;
@@ -77,16 +77,16 @@ namespace SemsApi.Services
             var categories = await _context.TeacherEvaluationCategories
                 .AsNoTracking()
                 .Where(c => c.EvaluationTypeId == evaluationForm.EvaluationTypeId)
-                .OrderBy(c => c.CatNo)
+                .OrderBy(c => c.CategoryId)
                 .ToListAsync();
 
-            var catNos = categories.Select(c => c.CatNo).ToList();
+            var categoryIds = categories.Select(c => c.CategoryId).ToList();
 
             var questions = await _context.EvaluationQuestions
                 .AsNoTracking()
-                .Where(q => catNos.Contains(q.CatNo))
-                .OrderBy(q => q.CatNo)
-                .ThenBy(q => q.QnNo)
+                .Where(q => categoryIds.Contains(q.CategoryId))
+                .OrderBy(q => q.CategoryId)
+                .ThenBy(q => q.QuestionId)
                 .ToListAsync();
 
             var detail = new FormDetailDto
@@ -105,16 +105,15 @@ namespace SemsApi.Services
                 CreatedAt = evaluationForm.CreatedAt,
                 Categories = categories.Select(c => new EvaluationCategoryDto
                 {
-                    CatNo = c.CatNo,
-                    CatRn = c.CatRn,
-                    CatName = c.CatName,
-                    CatRate = c.CatRate,
+                    CategoryId = c.CategoryId,
+                    CategoryName = c.CategoryName,
+                    CategoryRate = c.CategoryRate,
                     Questions = questions
-                        .Where(q => q.CatNo == c.CatNo)
+                        .Where(q => q.CategoryId == c.CategoryId)
                         .Select(q => new EvaluationQuestionDto
                         {
-                            QnNo = q.QnNo,
-                            QnName = q.QnName
+                            QuestionId = q.QuestionId,
+                            QuestionName = q.QuestionName
                         })
                         .ToList()
                 }).ToList()
@@ -313,7 +312,7 @@ namespace SemsApi.Services
             var categoryNos = await _context.TeacherEvaluationCategories
                 .AsNoTracking()
                 .Where(c => c.EvaluationTypeId == evaluationTypeId)
-                .Select(c => c.CatNo)
+                .Select(c => c.CategoryId)
                 .ToListAsync();
 
             if (categoryNos.Count == 0)
@@ -321,8 +320,8 @@ namespace SemsApi.Services
 
             var categoriesWithQuestions = await _context.EvaluationQuestions
                 .AsNoTracking()
-                .Where(q => categoryNos.Contains(q.CatNo))
-                .Select(q => q.CatNo)
+                .Where(q => categoryNos.Contains(q.CategoryId))
+                .Select(q => q.CategoryId)
                 .Distinct()
                 .ToListAsync();
 
@@ -331,7 +330,7 @@ namespace SemsApi.Services
                 .ToList();
 
             if (missing.Count > 0)
-                return $"Every category needs at least one question. Categories without questions (CatNo): {string.Join(", ", missing)}.";
+                return $"Every category needs at least one question. Categories without questions (CategoryId): {string.Join(", ", missing)}.";
 
             return null;
         }

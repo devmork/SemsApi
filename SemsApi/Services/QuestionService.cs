@@ -20,51 +20,51 @@ namespace SemsApi.Services
             _context = context;
         }
 
-        public async Task<ActionResult<List<EvaluationQuestionDto>>> GetAllAsync(int catNo)
+        public async Task<ActionResult<List<EvaluationQuestionDto>>> GetAllAsync(int categoryId)
         {
-            if (!await CategoryExistsAsync(catNo))
+            if (!await CategoryExistsAsync(categoryId))
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
             var data = await _context.EvaluationQuestions
                 .AsNoTracking()
-                .Where(q => q.CatNo == catNo)
-                .OrderBy(q => q.QnNo)
+                .Where(q => q.CategoryId == categoryId)
+                .OrderBy(q => q.QuestionId)
                 .Select(q => new EvaluationQuestionDto
                 {
-                    QnNo = q.QnNo,
-                    QnName = q.QnName
+                    QuestionId = q.QuestionId,
+                    QuestionName = q.QuestionName
                 })
                 .ToListAsync();
 
             return new OkObjectResult(data);
         }
 
-        public async Task<ActionResult<EvaluationQuestionDto>> GetByNoAsync(int catNo, int qnNo)
+        public async Task<ActionResult<EvaluationQuestionDto>> GetByNoAsync(int categoryId, int questionId)
         {
-            if (!await CategoryExistsAsync(catNo))
+            if (!await CategoryExistsAsync(categoryId))
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
-            var question = await FindQuestionAsync(catNo, qnNo, track: false);
+            var question = await FindQuestionAsync(categoryId, questionId, track: false);
             if (question is null)
                 return new NotFoundObjectResult(new { message = "Question not found." });
 
             return new OkObjectResult(QuestionHelper.MapToDto(question));
         }
 
-        public async Task<ActionResult> CreateAsync(int catNo, EvaluationQuestionDto request)
+        public async Task<ActionResult> CreateAsync(int categoryId, EvaluationQuestionDto request)
         {
-            if (!await CategoryExistsAsync(catNo))
+            if (!await CategoryExistsAsync(categoryId))
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
             var validationError = QuestionHelper.Validate(request);
             if (validationError is not null)
                 return new BadRequestObjectResult(new { message = validationError });
 
-            var qnName = request.QnName!.Trim();
+            var qnName = request.QuestionName!.Trim();
             var entity = new EvaluationQuestion
             {
-                CatNo = catNo,
-                QnName = qnName
+                CategoryId = categoryId,
+                QuestionName = qnName
             };
 
             _context.EvaluationQuestions.Add(entity);
@@ -73,16 +73,16 @@ namespace SemsApi.Services
             return new CreatedAtActionResult(
                 nameof(Controllers.QuestionController.GetByNo),
                 "Question",
-                new { catNo, qnNo = entity.QnNo },
+                new { categoryId, questionId = entity.QuestionId },
                 new { message = "Question created successfully.", data = QuestionHelper.MapToDto(entity) });
         }
 
-        public async Task<ActionResult> UpdateAsync(int catNo, int qnNo, EvaluationQuestionDto request)
+        public async Task<ActionResult> UpdateAsync(int categoryId, int questionId, EvaluationQuestionDto request)
         {
-            if (!await CategoryExistsAsync(catNo))
+            if (!await CategoryExistsAsync(categoryId))
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
-            var question = await FindQuestionAsync(catNo, qnNo, track: true);
+            var question = await FindQuestionAsync(categoryId, questionId, track: true);
             if (question is null)
                 return new NotFoundObjectResult(new { message = "Question not found." });
 
@@ -90,7 +90,7 @@ namespace SemsApi.Services
             if (validationError is not null)
                 return new BadRequestObjectResult(new { message = validationError });
 
-            question.QnName = request.QnName!.Trim();
+            question.QuestionName = request.QuestionName!.Trim();
             await _context.SaveChangesAsync();
 
             return new OkObjectResult(new
@@ -100,12 +100,12 @@ namespace SemsApi.Services
             });
         }
 
-        public async Task<ActionResult> DeleteAsync(int catNo, int qnNo)
+        public async Task<ActionResult> DeleteAsync(int categoryId, int questionId)
         {
-            if (!await CategoryExistsAsync(catNo))
+            if (!await CategoryExistsAsync(categoryId))
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
-            var question = await FindQuestionAsync(catNo, qnNo, track: true);
+            var question = await FindQuestionAsync(categoryId, questionId, track: true);
             if (question is null)
                 return new NotFoundObjectResult(new { message = "Question not found." });
 
@@ -115,18 +115,18 @@ namespace SemsApi.Services
             return new NoContentResult();
         }
 
-        private Task<bool> CategoryExistsAsync(int catNo) =>
+        private Task<bool> CategoryExistsAsync(int categoryId) =>
             _context.TeacherEvaluationCategories
                 .AsNoTracking()
-                .AnyAsync(c => c.CatNo == catNo);
+                .AnyAsync(c => c.CategoryId == categoryId);
 
-        private Task<EvaluationQuestion?> FindQuestionAsync(int catNo, int qnNo, bool track)
+        private Task<EvaluationQuestion?> FindQuestionAsync(int categoryId, int questionId, bool track)
         {
             var query = track
                 ? _context.EvaluationQuestions.AsQueryable()
                 : _context.EvaluationQuestions.AsNoTracking();
 
-            return query.FirstOrDefaultAsync(q => q.CatNo == catNo && q.QnNo == qnNo);
+            return query.FirstOrDefaultAsync(q => q.CategoryId == categoryId && q.QuestionId == questionId);
         }
     }
 }

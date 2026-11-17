@@ -541,18 +541,18 @@ namespace SemsApi.Services
             var categories = await _context.TeacherEvaluationCategories
                 .AsNoTracking()
                 .Where(c => c.EvaluationTypeId == EvaluationForm.EvaluationTypeId)
-                .OrderBy(c => c.CatNo)
+                .OrderBy(c => c.CategoryId)
                 .ToListAsync(ct);
 
             var categoryNos = categories
-                .Select(c => c.CatNo)
+                .Select(c => c.CategoryId)
                 .ToList();
 
             var questions = await _context.EvaluationQuestions
                 .AsNoTracking()
-                .Where(q => categoryNos.Contains(q.CatNo))
-                .OrderBy(q => q.CatNo)
-                .ThenBy(q => q.QnNo)
+                .Where(q => categoryNos.Contains(q.CategoryId))
+                .OrderBy(q => q.CategoryId)
+                .ThenBy(q => q.QuestionId)
                 .ToListAsync(ct);
 
             return new FormDetailDto
@@ -571,16 +571,15 @@ namespace SemsApi.Services
                 CreatedAt = EvaluationForm.CreatedAt,
                 Categories = categories.Select(c => new EvaluationCategoryDto
                 {
-                    CatNo = c.CatNo,
-                    CatRn = c.CatRn,
-                    CatName = c.CatName,
-                    CatRate = c.CatRate,
+                    CategoryId = c.CategoryId,
+                    CategoryName = c.CategoryName,
+                    CategoryRate = c.CategoryRate,
                     Questions = questions
-                        .Where(q => q.CatNo == c.CatNo)
+                        .Where(q => q.CategoryId == c.CategoryId)
                         .Select(q => new EvaluationQuestionDto
                         {
-                            QnNo = q.QnNo,
-                            QnName = q.QnName
+                            QuestionId = q.QuestionId,
+                            QuestionName = q.QuestionName
                         })
                         .ToList()
                 }).ToList()

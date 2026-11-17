@@ -153,16 +153,16 @@ namespace SemsApi.Services
                 return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
             // Validate the questions belong to this evaluation type and exist
-            if (request.Answers.Select(a => a.QnNo).Distinct().Count() != request.Answers.Count)
+            if (request.Answers.Select(a => a.QuestionId).Distinct().Count() != request.Answers.Count)
                 return new BadRequestObjectResult(new { message = "Duplicate question IDs are not allowed." });
 
-            var qnNos = request.Answers.Select(a => a.QnNo).Distinct().ToList();
+            var questionIds = request.Answers.Select(a => a.QuestionId).Distinct().ToList();
             var validQuestions = await _context.EvaluationQuestions.AsNoTracking()
-                .Where(q => qnNos.Contains(q.QnNo))
-                .Select(q => new { q.QnNo, q.CatNo, q.Category.EvaluationTypeId })
+                .Where(q => questionIds.Contains(q.QuestionId))
+                .Select(q => new { q.QuestionId, q.CategoryId, q.Category.EvaluationTypeId })
                 .ToListAsync(ct);
 
-            if (validQuestions.Count != qnNos.Count)
+            if (validQuestions.Count != questionIds.Count)
                 return new BadRequestObjectResult(new { message = "One or more question ids are invalid." });
 
             if (validQuestions.Any(q => q.EvaluationTypeId != request.EvaluationTypeId))
@@ -209,8 +209,8 @@ namespace SemsApi.Services
                 {
                     submission.Answers.Add(new FacilityEvaluationAnswer
                     {
-                        CatNo = a.CatNo,
-                        QnNo = a.QnNo,
+                        CategoryId = a.CategoryId,
+                        QuestionId = a.QuestionId,
                         RateVal = a.RateVal
                     });
                 }
@@ -300,10 +300,10 @@ namespace SemsApi.Services
             var responseCount = submissions.Select(s => s.StudentId).Distinct().Count();
 
             var categoryResults = allAnswers
-                .GroupBy(a => a.CatNo)
+                .GroupBy(a => a.CategoryId)
                 .Select(g => new FacilityEvaluationCategoryResultDto
                 {
-                    CatNo = g.Key,
+                    CategoryId = g.Key,
                     ResponseCount = g.Count(),
                     AverageRating = g.Any()
                         ? (decimal?)Math.Round(g.Average(a => a.RateVal), 2)
@@ -312,11 +312,11 @@ namespace SemsApi.Services
                 .ToList();
 
             var questionResults = allAnswers
-                .GroupBy(a => new { a.QnNo, a.CatNo })
+                .GroupBy(a => new { a.QuestionId, a.CategoryId })
                 .Select(g => new FacilityEvaluationQuestionResultDto
                 {
-                    QnNo = g.Key.QnNo,
-                    CatNo = g.Key.CatNo,
+                    QuestionId = g.Key.QuestionId,
+                    CategoryId = g.Key.CategoryId,
                     ResponseCount = g.Count(),
                     AverageRating = g.Any()
                         ? (decimal?)Math.Round(g.Average(a => a.RateVal), 2)
@@ -325,26 +325,25 @@ namespace SemsApi.Services
                 .ToList();
 
             // Enrich with names
-            var catNos = categoryResults.Select(c => c.CatNo).ToList();
+            var categoryIds = categoryResults.Select(c => c.CategoryId).ToList();
             var categories = await _context.TeacherEvaluationCategories.AsNoTracking()
-                .Where(c => catNos.Contains(c.CatNo)).ToListAsync(ct);
-            var catMap = categories.ToDictionary(c => c.CatNo);
+                .Where(c => categoryIds.Contains(c.CategoryId)).ToListAsync(ct);
+            var catMap = categories.ToDictionary(c => c.CategoryId);
             foreach (var c in categoryResults)
             {
-                if (catMap.TryGetValue(c.CatNo, out var cat))
+                if (catMap.TryGetValue(c.CategoryId, out var cat))
                 {
-                    c.CatName = cat.CatName;
-                    c.CatRn = cat.CatRn;
-                    c.CatRate = cat.CatRate;
+                    c.CategoryName = cat.CategoryName;
+                    c.CategoryRate = cat.CategoryRate;
                 }
             }
 
-            var qnNos = questionResults.Select(q => q.QnNo).ToList();
+            var questionIds = questionResults.Select(q => q.QuestionId).ToList();
             var questions = await _context.EvaluationQuestions.AsNoTracking()
-                .Where(q => qnNos.Contains(q.QnNo)).ToListAsync(ct);
-            var qMap = questions.ToDictionary(q => q.QnNo);
+                .Where(q => questionIds.Contains(q.QuestionId)).ToListAsync(ct);
+            var qMap = questions.ToDictionary(q => q.QuestionId);
             foreach (var q in questionResults)
-                if (qMap.TryGetValue(q.QnNo, out var qn)) q.QnName = qn.QnName;
+                if (qMap.TryGetValue(q.QuestionId, out var qn)) q.QuestionName = qn.QuestionName;
 
             var detail = new FacilityEvaluationDetailResultDto
             {
@@ -354,8 +353,8 @@ namespace SemsApi.Services
                 AverageRating = allAnswers.Count > 0
                     ? (decimal?)Math.Round(allAnswers.Average(a => a.RateVal), 2)
                     : null,
-                Categories = categoryResults.OrderBy(c => c.CatNo).ToList(),
-                Questions = questionResults.OrderBy(q => q.CatNo).ThenBy(q => q.QnNo).ToList()
+                Categories = categoryResults.OrderBy(c => c.CategoryId).ToList(),
+                Questions = questionResults.OrderBy(q => q.CategoryId).ThenBy(q => q.QuestionId).ToList()
             };
 
             return new OkObjectResult(detail);

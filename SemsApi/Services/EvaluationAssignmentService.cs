@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.EvaluationAssignments;
@@ -267,27 +267,27 @@ namespace SemsApi.Services
             if (request.Answers.Any(a => a.RateVal < 0 || a.RateVal > 5))
                 return new BadRequestObjectResult(new { message = "RateVal must be between 0 and 5." });
 
-            if (request.Answers.Any(a => a.CatNo <= 0 || a.QnNo <= 0))
-                return new BadRequestObjectResult(new { message = "CatNo and QnNo must be positive integers." });
+            if (request.Answers.Any(a => a.CategoryId <= 0 || a.QuestionId <= 0))
+                return new BadRequestObjectResult(new { message = "CategoryId and QuestionId must be positive integers." });
 
-            if (request.Answers.Select(a => a.QnNo).Distinct().Count() != request.Answers.Count)
+            if (request.Answers.Select(a => a.QuestionId).Distinct().Count() != request.Answers.Count)
                 return new BadRequestObjectResult(new { message = "Duplicate question IDs are not allowed." });
 
-            var qnNos = request.Answers.Select(a => a.QnNo).Distinct().ToList();
+            var questionIds = request.Answers.Select(a => a.QuestionId).Distinct().ToList();
             var validQuestions = await _context.EvaluationQuestions.AsNoTracking()
-                .Where(q => qnNos.Contains(q.QnNo))
-                .Select(q => new { q.QnNo, q.CatNo, q.Category.EvaluationTypeId })
+                .Where(q => questionIds.Contains(q.QuestionId))
+                .Select(q => new { q.QuestionId, q.CategoryId, q.Category.EvaluationTypeId })
                 .ToListAsync(ct);
 
-            if (validQuestions.Count != qnNos.Count)
+            if (validQuestions.Count != questionIds.Count)
                 return new BadRequestObjectResult(new { message = "One or more question ids are invalid." });
 
             if (validQuestions.Any(q => q.EvaluationTypeId != request.EvaluationTypeId))
                 return new BadRequestObjectResult(new { message = "One or more questions do not belong to the selected evaluation type." });
 
-            var questionMap = validQuestions.ToDictionary(q => q.QnNo);
-            if (request.Answers.Any(a => !questionMap.TryGetValue(a.QnNo, out var q) || q.CatNo != a.CatNo))
-                return new BadRequestObjectResult(new { message = "One or more answers have a CatNo that does not match the question." });
+            var questionMap = validQuestions.ToDictionary(q => q.QuestionId);
+            if (request.Answers.Any(a => !questionMap.TryGetValue(a.QuestionId, out var q) || q.CategoryId != a.CategoryId))
+                return new BadRequestObjectResult(new { message = "One or more answers have a CategoryId that does not match the question." });
 
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
             try
@@ -309,8 +309,8 @@ namespace SemsApi.Services
                 {
                     submission.Answers.Add(new TeacherEvaluationAnswer
                     {
-                        CatNo = a.CatNo,
-                        QnNo = a.QnNo,
+                        CategoryId = a.CategoryId,
+                        QuestionId = a.QuestionId,
                         RateVal = a.RateVal
                     });
                 }

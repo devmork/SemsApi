@@ -1,17 +1,13 @@
 namespace SemsApi.Models
 {
-    /// <summary>
-    /// A question. Its evaluation type comes through its category.
-    /// </summary>
     public class EvaluationQuestion
     {
-        /// <summary>Primary key, database-generated. Unique across ALL categories (the "QuestionNumber").</summary>
-        public int QnNo { get; set; }
+        public int QuestionId { get; set; }
+        public int CategoryId { get; set; }
+        public string? QuestionName { get; set; }
 
-        /// <summary>FK to EvaluationCategory.CatNo.</summary>
-        public int CatNo { get; set; }
+        // REFERENCE TYPE
         public EvaluationCategory Category { get; set; } = null!;
 
-        public string? QnName { get; set; }
     }
 }

@@ -8,14 +8,14 @@ namespace SemsApi.Utilities
         public static EvaluationQuestionDto MapToDto(EvaluationQuestion question) =>
             new()
             {
-                QnNo = question.QnNo,
-                QnName = question.QnName
+                QuestionId = question.QuestionId,
+                QuestionName = question.QuestionName
             };
 
         public static string? Validate(EvaluationQuestionDto? request)
         {
-            if (request is null || string.IsNullOrWhiteSpace(request.QnName))
-                return "QnName is required.";
+            if (request is null || string.IsNullOrWhiteSpace(request.QuestionName))
+                return "QuestionName is required.";
 
             return null;
         }
