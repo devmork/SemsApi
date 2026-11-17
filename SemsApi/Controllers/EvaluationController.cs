@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.Evaluation;
-using SemsApi.DTO.Guidance;
 using SemsApi.DTO.Teacher;
 using SemsApi.Models;
 using SemsApi.Models.Eval;
@@ -100,123 +99,6 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Submit Guidance Evaluation (answers + log)
-        /// </summary>
-        [Authorize(Roles = "Student")]
-        [HttpPost("guidance/submit")]
-        public async Task<ActionResult> SubmitGuidance([FromBody] SubmitGuidanceRequest request, CancellationToken ct)
-        {
-            if (request.Answers == null || request.Answers.Count == 0)
-                return BadRequest(new { message = "At least one answer is required." });
-
-            if (request.StudentId <= 0)
-                return BadRequest(new { message = "StudentId is required." });
-
-            if (string.IsNullOrWhiteSpace(request.Sy))
-                return BadRequest(new { message = "Sy is required." });
-
-            if (request.Term is < 1 or > 4)
-                return BadRequest(new { message = "Term must be between 1 and 4." });
-
-            var currentUserId = Utilities.UserContextResolver.GetUserId(HttpContext);
-            if (currentUserId is null)
-                return Unauthorized();
-
-            var student = await _context.Students
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.UserId == currentUserId.Value, ct);
-            if (student is null)
-                return Unauthorized(new { message = "Student profile not found for the current user." });
-
-            var requestedStudentId = request.StudentId.ToString();
-            var matchesCurrentStudent =
-                requestedStudentId == student.StudentId.ToString() ||
-                string.Equals(requestedStudentId, student.StudentNumber, StringComparison.OrdinalIgnoreCase);
-            if (!matchesCurrentStudent)
-                return Forbid();
-
-            var resolvedStudentId = !string.IsNullOrWhiteSpace(student.StudentNumber)
-                ? student.StudentNumber
-                : student.StudentId.ToString();
-
-            if (request.Answers.Select(a => a.QnNo).Distinct().Count() != request.Answers.Count)
-                return BadRequest(new { message = "Duplicate question IDs are not allowed." });
-
-            var questionPairs = request.Answers
-                .Select(a => new { a.CatNo, a.QnNo })
-                .Distinct()
-                .ToList();
-
-            if (request.Answers.Any(a => a.CatNo <= 0 || a.QnNo <= 0))
-                return BadRequest(new { message = "CatNo and QnNo must be positive integers." });
-
-            if (request.Answers.Any(a => a.RateVal < 0 || a.RateVal > 5))
-                return BadRequest(new { message = "RateVal must be between 0 and 5." });
-
-            var catNos = questionPairs.Select(q => q.CatNo).Distinct().ToList();
-            var validPairs = await _context.EvaluationQuestions
-                .AsNoTracking()
-                .Where(q => catNos.Contains(q.CatNo))
-                .Select(q => new { q.CatNo, q.QnNo })
-                .ToListAsync(ct);
-
-            var validSet = validPairs.Select(q => $"{q.CatNo}:{q.QnNo}").ToHashSet();
-            if (questionPairs.Any(q => !validSet.Contains($"{q.CatNo}:{q.QnNo}")))
-                return BadRequest(new { message = "One or more question IDs are invalid." });
-
-            // Prevent duplicate submission
-            var alreadySubmitted = await _context.GuidanceEvaluationLogs
-                .AnyAsync(l => l.StudentId == student.StudentId
-                            && l.Sy == request.Sy
-                            && l.Term == request.Term, ct);
-
-            if (alreadySubmitted)
-                return Conflict(new { message = "This student has already submitted the evaluation for this term." });
-
-            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
-
-            try
-            {
-                var log = new GuidanceEvaluationLog
-                {
-                    StudentId = student.StudentId,
-                    Sy = request.Sy,
-                    Term = request.Term,
-                    DateEvaluated = DateTime.UtcNow
-                };
-                _context.GuidanceEvaluationLogs.Add(log);
-
-                foreach (var answer in request.Answers)
-                {
-                    _context.GuidanceEvaluationAnswers.Add(new GuidanceEvaluationAnswer
-                    {
-                        StudentId = student.StudentId,
-                        CatNo = answer.CatNo,
-                        QnNo = answer.QnNo,
-                        Sy = request.Sy,
-                        Term = request.Term,
-                        RateVal = answer.RateVal
-                    });
-                }
-
-                await _context.SaveChangesAsync(ct);
-                await transaction.CommitAsync(ct);
-
-                return Ok(new { message = "Guidance evaluation submitted successfully." });
-            }
-            catch (DbUpdateException ex) when (DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
-            {
-                await transaction.RollbackAsync(ct);
-                return Conflict(new { message = "This student has already submitted the evaluation for this term." });
-            }
-            catch
-            {
-                await transaction.RollbackAsync(ct);
-                throw;
-            }
-        }
-
-        /// <summary>
         /// Submit Teacher Strength / Comment
         /// </summary>
         [Authorize(Roles = "Student")]
@@ -284,25 +166,6 @@ namespace SemsApi.Controllers
             await _context.SaveChangesAsync(ct);
 
             return Ok(new { message = "Teacher strength comment saved successfully." });
-        }
-
-        /// <summary>
-        /// Get Guidance results of a student
-        /// </summary>
-        [Authorize(Roles = "QA,Admin")]
-        [HttpGet("guidance/results/{studentId}")]
-        public async Task<ActionResult> GetGuidanceResults(
-            int studentId,
-            [FromQuery] string sy = "2025-2026",
-            [FromQuery] int term = 1)
-        {
-            var results = await _context.GuidanceEvaluationAnswers
-                .Where(r => r.StudentId == studentId && r.Sy == sy && r.Term == term)
-                .OrderBy(r => r.CatNo)
-                .ThenBy(r => r.QnNo)
-                .ToListAsync();
-
-            return Ok(results);
         }
 
         /// <summary>
