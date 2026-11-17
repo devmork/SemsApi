@@ -79,8 +79,6 @@ namespace SemsApi.Services
                     {
                         FacilityId = facility.FacilityId,
                         FacilityName = facility.FacilityName,
-                        Description = facility.Description,
-                        Location = facility.Location,
                         EvaluationTypeId = session.EvaluationForm.EvaluationTypeId,
                         FormId = session.FormId,
                         EvaluationSessionId = session.EvaluationSessionId,
