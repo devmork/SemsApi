@@ -407,8 +407,6 @@ namespace SemsApi.Data
             {
                 e.HasKey(x => x.FacilityId);
                 e.Property(x => x.FacilityName).IsRequired().HasMaxLength(150);
-                e.Property(x => x.Description).HasMaxLength(1000);
-                e.Property(x => x.Location).HasMaxLength(200);
                 e.HasIndex(x => x.FacilityName).IsUnique();
             });
 
