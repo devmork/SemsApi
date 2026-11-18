@@ -28,6 +28,7 @@ namespace SemsApi.Services
             EvaluationSessionStatus? status = null,
             bool onlyOpen = false,
             bool studentView = false,
+            int? studentUserId = null,
             CancellationToken ct = default)
         {
             var query = _context.EvaluationSessions
@@ -62,17 +63,19 @@ namespace SemsApi.Services
                 .ThenByDescending(s => s.EvaluationSessionId)
                 .ToListAsync(ct);
 
+            if (studentView)
+            {
+                var studentGrade = await ResolveStudentGradeAsync(studentUserId, ct);
+                sessions = sessions
+                    .Where(s => IsSessionInStudentGradeScope(s, studentGrade))
+                    .ToList();
+            }
+
             var sessionIds = sessions
                 .Select(s => s.EvaluationSessionId)
                 .ToList();
 
-            var counts = await _context.TeacherEvaluationSubmissions
-                .AsNoTracking()
-                .Where(x => x.EvaluationSessionId.HasValue &&
-                            sessionIds.Contains(x.EvaluationSessionId.Value))
-                .GroupBy(x => x.EvaluationSessionId!.Value)
-                .Select(g => new { Id = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Id, x => x.Count, ct);
+            var counts = await GetSubmissionCountsAsync(sessionIds, ct);
 
             var data = sessions
                 .Select(s => EvaluationSessionHelper.MapToDto(
@@ -86,6 +89,7 @@ namespace SemsApi.Services
         public async Task<ActionResult<EvaluationSessionDetailDto>> GetByIdAsync(
             int id,
             bool studentView = false,
+            int? studentUserId = null,
             CancellationToken ct = default)
         {
             var session = await _context.EvaluationSessions
@@ -97,15 +101,17 @@ namespace SemsApi.Services
             if (session is null)
                 return new NotFoundObjectResult(new { message = "Evaluation session not found." });
 
-            if (studentView &&
-                !EvaluationSessionHelper.IsWithinWindow(session, DateTime.UtcNow))
+            if (studentView)
             {
-                return new NotFoundObjectResult(new { message = "Evaluation session not found." });
+                if (!EvaluationSessionHelper.IsWithinWindow(session, DateTime.UtcNow))
+                    return new NotFoundObjectResult(new { message = "Evaluation session not found." });
+
+                var studentGrade = await ResolveStudentGradeAsync(studentUserId, ct);
+                if (!IsSessionInStudentGradeScope(session, studentGrade))
+                    return new NotFoundObjectResult(new { message = "Evaluation session not found." });
             }
 
-            var submissionCount = await _context.TeacherEvaluationSubmissions
-                .AsNoTracking()
-                .CountAsync(s => s.EvaluationSessionId == id, ct);
+            var submissionCount = await GetSubmissionCountAsync(id, ct);
 
             var detail = new EvaluationSessionDetailDto
             {
@@ -326,9 +332,7 @@ namespace SemsApi.Services
 
             await _context.SaveChangesAsync(ct);
 
-            var submissionCount = await _context.TeacherEvaluationSubmissions
-                .AsNoTracking()
-                .CountAsync(s => s.EvaluationSessionId == session.EvaluationSessionId, ct);
+            var submissionCount = await GetSubmissionCountAsync(session.EvaluationSessionId, ct);
 
             return new OkObjectResult(new
             {
@@ -409,9 +413,7 @@ namespace SemsApi.Services
 
             if (session.Status == EvaluationSessionStatus.Open)
             {
-                var existingCount = await _context.TeacherEvaluationSubmissions
-                    .AsNoTracking()
-                    .CountAsync(s => s.EvaluationSessionId == id, ct);
+                var existingCount = await GetSubmissionCountAsync(id, ct);
 
                 return new OkObjectResult(new
                 {
@@ -429,9 +431,7 @@ namespace SemsApi.Services
 
             await _context.SaveChangesAsync(ct);
 
-            var submissionCount = await _context.TeacherEvaluationSubmissions
-                .AsNoTracking()
-                .CountAsync(s => s.EvaluationSessionId == id, ct);
+            var submissionCount = await GetSubmissionCountAsync(id, ct);
 
             return new OkObjectResult(new
             {
@@ -460,9 +460,7 @@ namespace SemsApi.Services
 
             if (session.Status == EvaluationSessionStatus.Closed)
             {
-                var existingCount = await _context.TeacherEvaluationSubmissions
-                    .AsNoTracking()
-                    .CountAsync(s => s.EvaluationSessionId == id, ct);
+                var existingCount = await GetSubmissionCountAsync(id, ct);
 
                 return new OkObjectResult(new
                 {
@@ -476,9 +474,7 @@ namespace SemsApi.Services
 
             await _context.SaveChangesAsync(ct);
 
-            var submissionCount = await _context.TeacherEvaluationSubmissions
-                .AsNoTracking()
-                .CountAsync(s => s.EvaluationSessionId == id, ct);
+            var submissionCount = await GetSubmissionCountAsync(id, ct);
 
             return new OkObjectResult(new
             {
@@ -491,15 +487,36 @@ namespace SemsApi.Services
                 int id,
                 CancellationToken ct = default)
         {
-            // 1. Verify the session exists
-            var sessionExists = await _context.EvaluationSessions
+            var session = await _context.EvaluationSessions
                 .AsNoTracking()
-                .AnyAsync(s => s.EvaluationSessionId == id, ct);
+                .Include(s => s.EvaluationForm)
+                    .ThenInclude(f => f.EvaluationType)
+                .FirstOrDefaultAsync(s => s.EvaluationSessionId == id, ct);
 
-            if (!sessionExists)
+            if (session is null)
                 return new NotFoundObjectResult(new { message = "Evaluation session not found." });
 
-            // 2. Fetch the submissions with Student, Subject, and Teacher details
+            if (FormHelper.IsFacilityEvaluation(session.EvaluationForm.EvaluationType))
+            {
+                var facilitySubmissions = await _context.FacilityEvaluationSubmissions
+                    .AsNoTracking()
+                    .Where(s => s.EvaluationSessionId == id)
+                    .OrderByDescending(s => s.SubmittedAtUtc)
+                    .Select(s => new SessionSubmissionDto
+                    {
+                        SubmissionId = s.SubmissionId,
+                        StudentId = s.StudentId,
+                        StudentName = $"{s.Student.User.FirstName} {s.Student.User.LastName}".Trim(),
+                        StudentNumber = s.Student.StudentNumber,
+                        SubjectCode = s.Facility.FacilityName,
+                        TeacherName = "Facility",
+                        SubmittedAtUtc = s.SubmittedAtUtc
+                    })
+                    .ToListAsync(ct);
+
+                return new OkObjectResult(facilitySubmissions);
+            }
+
             var submissions = await _context.TeacherEvaluationSubmissions
                 .AsNoTracking()
                 .Where(s => s.EvaluationSessionId == id)
@@ -596,6 +613,93 @@ namespace SemsApi.Services
                         .ToList()
                 }).ToList()
             };
+        }
+
+        private async Task<Dictionary<int, int>> GetSubmissionCountsAsync(
+            List<int> sessionIds,
+            CancellationToken ct)
+        {
+            if (sessionIds.Count == 0)
+                return new Dictionary<int, int>();
+
+            var teacherCounts = await _context.TeacherEvaluationSubmissions
+                .AsNoTracking()
+                .Where(x => x.EvaluationSessionId.HasValue &&
+                            sessionIds.Contains(x.EvaluationSessionId.Value))
+                .GroupBy(x => x.EvaluationSessionId!.Value)
+                .Select(g => new { Id = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Count, ct);
+
+            var facilityCounts = await _context.FacilityEvaluationSubmissions
+                .AsNoTracking()
+                .Where(x => x.EvaluationSessionId.HasValue &&
+                            sessionIds.Contains(x.EvaluationSessionId.Value))
+                .GroupBy(x => x.EvaluationSessionId!.Value)
+                .Select(g => new { Id = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Count, ct);
+
+            var totals = new Dictionary<int, int>(sessionIds.Count);
+            foreach (var id in sessionIds)
+            {
+                totals[id] =
+                    teacherCounts.GetValueOrDefault(id) +
+                    facilityCounts.GetValueOrDefault(id);
+            }
+
+            return totals;
+        }
+
+        private async Task<int> GetSubmissionCountAsync(int sessionId, CancellationToken ct)
+        {
+            var teacherCount = await _context.TeacherEvaluationSubmissions
+                .AsNoTracking()
+                .CountAsync(s => s.EvaluationSessionId == sessionId, ct);
+
+            var facilityCount = await _context.FacilityEvaluationSubmissions
+                .AsNoTracking()
+                .CountAsync(s => s.EvaluationSessionId == sessionId, ct);
+
+            return teacherCount + facilityCount;
+        }
+
+        private async Task<int?> ResolveStudentGradeAsync(int? userId, CancellationToken ct)
+        {
+            if (!userId.HasValue)
+                return null;
+
+            var student = await _context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.UserId == userId.Value, ct);
+
+            if (student is null)
+                return null;
+
+            var enrollmentGrade = await _context.StudentTermEnrollments
+                .AsNoTracking()
+                .Where(e => e.StudentId == student.StudentId)
+                .OrderByDescending(e => e.SchoolYear)
+                .ThenByDescending(e => e.Term)
+                .Select(e => (int?)e.GradeLevel)
+                .FirstOrDefaultAsync(ct);
+
+            return enrollmentGrade ?? GradeLevelHelper.ParseDisplay(student.GradeLevel);
+        }
+
+        private static bool IsSessionInStudentGradeScope(EvaluationSession session, int? studentGrade)
+        {
+            if (!session.GradeLevelFrom.HasValue && !session.GradeLevelTo.HasValue)
+                return true;
+
+            if (!studentGrade.HasValue)
+                return false;
+
+            if (session.GradeLevelFrom.HasValue && studentGrade.Value < session.GradeLevelFrom.Value)
+                return false;
+
+            if (session.GradeLevelTo.HasValue && studentGrade.Value > session.GradeLevelTo.Value)
+                return false;
+
+            return true;
         }
     }
 }

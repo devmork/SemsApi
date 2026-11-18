@@ -37,13 +37,15 @@ namespace SemsApi.Controllers
             [FromQuery] bool onlyOpen = false,
             CancellationToken ct = default)
         {
+            var isStudent = User.IsInRole("Student");
             return await _service.GetAllAsync(
                 formId,
                 schoolYear,
                 term,
                 status,
                 onlyOpen,
-                studentView: User.IsInRole("Student"),
+                studentView: isStudent,
+                studentUserId: isStudent ? UserContextResolver.GetUserId(HttpContext) : null,
                 ct);
         }
 
@@ -55,9 +57,11 @@ namespace SemsApi.Controllers
             int id,
             CancellationToken ct = default)
         {
+            var isStudent = User.IsInRole("Student");
             return await _service.GetByIdAsync(
                 id,
-                studentView: User.IsInRole("Student"),
+                studentView: isStudent,
+                studentUserId: isStudent ? UserContextResolver.GetUserId(HttpContext) : null,
                 ct);
         }
 
