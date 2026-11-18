@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.Evaluation;
-using SemsApi.DTO.Guidance;
 using SemsApi.DTO.Teacher;
 using SemsApi.Models;
 using SemsApi.Models.Eval;
@@ -23,44 +22,50 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get the categories and questions of an evaluation type.
-        /// Example: /api/evaluation/EvaluationForm?evaluationTypeId=2
+        /// Get the categories and questions of an evaluation form.
+        /// Example: /api/evaluation/form?formId=3
         /// </summary>
         [Authorize(Roles = "QA,Admin")]
         [HttpGet("form")]
         public async Task<ActionResult<List<EvaluationCategoryDto>>> GetForm(
-            [FromQuery] int evaluationTypeId)
+            [FromQuery] int formId)
         {
-            if (!await _context.EvaluationTypes.AnyAsync(t => t.EvaluationTypeId == evaluationTypeId))
-                return NotFound(new { message = "Evaluation type not found." });
-
-            var categories = await _context.TeacherEvaluationCategories
+            var form = await _context.Forms
                 .AsNoTracking()
-                .Where(c => c.EvaluationTypeId == evaluationTypeId)
-                .OrderBy(c => c.CatNo)
+                .FirstOrDefaultAsync(f => f.FormId == formId);
+
+            if (form is null)
+                return NotFound(new { message = "Evaluation form not found." });
+
+            var formCategories = await _context.EvaluationFormCategories
+                .AsNoTracking()
+                .Include(fc => fc.EvaluationCategory)
+                .Where(fc => fc.FormId == formId && fc.IsActive)
+                .OrderBy(fc => fc.DisplayOrder)
+                .ThenBy(fc => fc.CategoryId)
                 .ToListAsync();
 
-            var catNos = categories.Select(c => c.CatNo).ToList();
+            var categoryIds = formCategories.Select(fc => fc.CategoryId).ToList();
 
-            var questions = await _context.EvaluationQuestions
+            var questions = await _context.EvaluationFormQuestions
                 .AsNoTracking()
-                .Where(q => catNos.Contains(q.CatNo))
-                .OrderBy(q => q.CatNo)
-                .ThenBy(q => q.QnNo)
+                .Include(q => q.FormCategory)
+                .Where(q => categoryIds.Contains(q.FormCategory.CategoryId))
+                .OrderBy(q => q.FormCategory.DisplayOrder)
+                .ThenBy(q => q.DisplayOrder)
                 .ToListAsync();
 
-            var result = categories.Select(c => new EvaluationCategoryDto
+            var result = formCategories.Select(fc => new EvaluationCategoryDto
             {
-                CatNo = c.CatNo,
-                CatRn = c.CatRn,
-                CatName = c.CatName,
-                CatRate = c.CatRate,
+                CategoryId = fc.CategoryId,
+                CategoryName = fc.EvaluationCategory?.CategoryName,
+                CategoryRate = fc.EvaluationCategory?.CategoryRate,
                 Questions = questions
-                    .Where(q => q.CatNo == c.CatNo)
+                    .Where(q => q.FormCategory.CategoryId == fc.CategoryId)
                     .Select(q => new EvaluationQuestionDto
                     {
-                        QnNo = q.QnNo,
-                        QnName = q.QnName
+                        QuestionId = q.FormQuestionId,
+                        QuestionName = q.QuestionName
                     })
                     .ToList()
             }).ToList();
@@ -69,151 +74,38 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get questions (optionally filtered by evaluation type and/or category)
+        /// Get form-scoped questions (optionally filtered by form and/or category).
         /// </summary>
         [Authorize(Roles = "QA,Admin")]
         [HttpGet("questions")]
         public async Task<ActionResult> GetQuestions(
-            [FromQuery] int? evaluationTypeId = null,
-            [FromQuery] int? catNo = null)
+            [FromQuery] int? formId = null,
+            [FromQuery] int? categoryId = null)
         {
-            var query = _context.EvaluationQuestions.AsNoTracking().AsQueryable();
+            var query = _context.EvaluationFormQuestions
+                .AsNoTracking()
+                .AsQueryable();
 
-            if (evaluationTypeId.HasValue)
-                query = query.Where(q => q.Category.EvaluationTypeId == evaluationTypeId.Value);
+            if (formId.HasValue)
+                query = query.Where(q => q.FormCategory.FormId == formId.Value);
 
-            if (catNo.HasValue)
-                query = query.Where(q => q.CatNo == catNo.Value);
+            if (categoryId.HasValue)
+                query = query.Where(q => q.FormCategory.CategoryId == categoryId.Value);
 
             var data = await query
-                .OrderBy(q => q.CatNo)
-                .ThenBy(q => q.QnNo)
+                .OrderBy(q => q.FormCategoryId)
+                .ThenBy(q => q.DisplayOrder)
                 .Select(q => new
                 {
-                    q.CatNo,
-                    q.QnNo,
-                    q.QnName
+                    q.FormCategoryId,
+                    FormId = q.FormCategory.FormId,
+                    CategoryId = q.FormCategory.CategoryId,
+                    QuestionId = q.FormQuestionId,
+                    q.QuestionName
                 })
                 .ToListAsync();
 
             return Ok(data);
-        }
-
-        /// <summary>
-        /// Submit Guidance Evaluation (answers + log)
-        /// </summary>
-        [Authorize(Roles = "Student")]
-        [HttpPost("guidance/submit")]
-        public async Task<ActionResult> SubmitGuidance([FromBody] SubmitGuidanceRequest request, CancellationToken ct)
-        {
-            if (request.Answers == null || request.Answers.Count == 0)
-                return BadRequest(new { message = "At least one answer is required." });
-
-            if (request.StudentId <= 0)
-                return BadRequest(new { message = "StudentId is required." });
-
-            if (string.IsNullOrWhiteSpace(request.Sy))
-                return BadRequest(new { message = "Sy is required." });
-
-            if (request.Term is < 1 or > 4)
-                return BadRequest(new { message = "Term must be between 1 and 4." });
-
-            var currentUserId = Utilities.UserContextResolver.GetUserId(HttpContext);
-            if (currentUserId is null)
-                return Unauthorized();
-
-            var student = await _context.Students
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.UserId == currentUserId.Value, ct);
-            if (student is null)
-                return Unauthorized(new { message = "Student profile not found for the current user." });
-
-            var requestedStudentId = request.StudentId.ToString();
-            var matchesCurrentStudent =
-                requestedStudentId == student.StudentId.ToString() ||
-                string.Equals(requestedStudentId, student.StudentNumber, StringComparison.OrdinalIgnoreCase);
-            if (!matchesCurrentStudent)
-                return Forbid();
-
-            var resolvedStudentId = !string.IsNullOrWhiteSpace(student.StudentNumber)
-                ? student.StudentNumber
-                : student.StudentId.ToString();
-
-            if (request.Answers.Select(a => a.QnNo).Distinct().Count() != request.Answers.Count)
-                return BadRequest(new { message = "Duplicate question IDs are not allowed." });
-
-            var questionPairs = request.Answers
-                .Select(a => new { a.CatNo, a.QnNo })
-                .Distinct()
-                .ToList();
-
-            if (request.Answers.Any(a => a.CatNo <= 0 || a.QnNo <= 0))
-                return BadRequest(new { message = "CatNo and QnNo must be positive integers." });
-
-            if (request.Answers.Any(a => a.RateVal < 0 || a.RateVal > 5))
-                return BadRequest(new { message = "RateVal must be between 0 and 5." });
-
-            var catNos = questionPairs.Select(q => q.CatNo).Distinct().ToList();
-            var validPairs = await _context.EvaluationQuestions
-                .AsNoTracking()
-                .Where(q => catNos.Contains(q.CatNo))
-                .Select(q => new { q.CatNo, q.QnNo })
-                .ToListAsync(ct);
-
-            var validSet = validPairs.Select(q => $"{q.CatNo}:{q.QnNo}").ToHashSet();
-            if (questionPairs.Any(q => !validSet.Contains($"{q.CatNo}:{q.QnNo}")))
-                return BadRequest(new { message = "One or more question IDs are invalid." });
-
-            // Prevent duplicate submission
-            var alreadySubmitted = await _context.GuidanceEvaluationLogs
-                .AnyAsync(l => l.StudentId == student.StudentId
-                            && l.Sy == request.Sy
-                            && l.Term == request.Term, ct);
-
-            if (alreadySubmitted)
-                return Conflict(new { message = "This student has already submitted the evaluation for this term." });
-
-            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
-
-            try
-            {
-                var log = new GuidanceEvaluationLog
-                {
-                    StudentId = student.StudentId,
-                    Sy = request.Sy,
-                    Term = request.Term,
-                    DateEvaluated = DateTime.UtcNow
-                };
-                _context.GuidanceEvaluationLogs.Add(log);
-
-                foreach (var answer in request.Answers)
-                {
-                    _context.GuidanceEvaluationAnswers.Add(new GuidanceEvaluationAnswer
-                    {
-                        StudentId = student.StudentId,
-                        CatNo = answer.CatNo,
-                        QnNo = answer.QnNo,
-                        Sy = request.Sy,
-                        Term = request.Term,
-                        RateVal = answer.RateVal
-                    });
-                }
-
-                await _context.SaveChangesAsync(ct);
-                await transaction.CommitAsync(ct);
-
-                return Ok(new { message = "Guidance evaluation submitted successfully." });
-            }
-            catch (DbUpdateException ex) when (DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
-            {
-                await transaction.RollbackAsync(ct);
-                return Conflict(new { message = "This student has already submitted the evaluation for this term." });
-            }
-            catch
-            {
-                await transaction.RollbackAsync(ct);
-                throw;
-            }
         }
 
         /// <summary>
@@ -284,25 +176,6 @@ namespace SemsApi.Controllers
             await _context.SaveChangesAsync(ct);
 
             return Ok(new { message = "Teacher strength comment saved successfully." });
-        }
-
-        /// <summary>
-        /// Get Guidance results of a student
-        /// </summary>
-        [Authorize(Roles = "QA,Admin")]
-        [HttpGet("guidance/results/{studentId}")]
-        public async Task<ActionResult> GetGuidanceResults(
-            int studentId,
-            [FromQuery] string sy = "2025-2026",
-            [FromQuery] int term = 1)
-        {
-            var results = await _context.GuidanceEvaluationAnswers
-                .Where(r => r.StudentId == studentId && r.Sy == sy && r.Term == term)
-                .OrderBy(r => r.CatNo)
-                .ThenBy(r => r.QnNo)
-                .ToListAsync();
-
-            return Ok(results);
         }
 
         /// <summary>

@@ -6,40 +6,45 @@ namespace SemsApi.Utilities
     public static class FormCompletenessHelper
     {
         /// <summary>
-        /// A EvaluationForm is complete when its EvaluationType has at least one category,
-        /// and every category has at least one question.
+        /// A EvaluationForm is complete when every active selected category on that form
+        /// has at least one form-scoped question.
         /// Returns an error message, or null when complete.
         /// </summary>
         public static async Task<string?> GetIncompleteFormErrorAsync(
             ApplicationDbContext context,
-            int evaluationTypeId,
+            int formId,
             CancellationToken ct = default)
         {
-            var categoryNos = await context.TeacherEvaluationCategories
+            var activeCategoryIds = await context.EvaluationFormCategories
                 .AsNoTracking()
-                .Where(c => c.EvaluationTypeId == evaluationTypeId)
-                .Select(c => c.CatNo)
+                .Where(fc => fc.FormId == formId && fc.IsActive)
+                .Select(fc => fc.CategoryId)
                 .ToListAsync(ct);
 
-            if (categoryNos.Count == 0)
+            if (activeCategoryIds.Count == 0)
             {
-                return "This evaluation type has no categories yet. Create its categories and questions first.";
+                return "This form has no categories selected. Add categories and questions first.";
             }
 
-            var categoriesWithQuestions = await context.EvaluationQuestions
+            var categoriesWithQuestions = await context.EvaluationFormQuestions
                 .AsNoTracking()
-                .Where(q => categoryNos.Contains(q.CatNo))
-                .Select(q => q.CatNo)
+                .Join(
+                    context.EvaluationFormCategories.AsNoTracking(),
+                    q => q.FormCategoryId,
+                    fc => fc.FormCategoryId,
+                    (q, fc) => new { q.FormCategoryId, fc.CategoryId, fc.FormId, fc.IsActive })
+                .Where(x => x.FormId == formId && x.IsActive)
+                .Select(x => x.CategoryId)
                 .Distinct()
                 .ToListAsync(ct);
 
-            var missing = categoryNos
+            var missing = activeCategoryIds
                 .Except(categoriesWithQuestions)
                 .ToList();
 
             if (missing.Count > 0)
             {
-                return $"Every category needs at least one question. Categories without questions (CatNo): {string.Join(", ", missing)}.";
+                return $"Every selected category needs at least one question. Categories without questions (CategoryId): {string.Join(", ", missing)}.";
             }
 
             return null;

@@ -20,6 +20,12 @@ namespace SemsApi.Models
         /// <summary>Term number, e.g. 1, 2, 3.</summary>
         public int Term { get; set; }
 
+        /// <summary>Inclusive lower bound of the audience grade level. Null = no lower bound.</summary>
+        public int? GradeLevelFrom { get; set; }
+
+        /// <summary>Inclusive upper bound of the audience grade level. Null = no upper bound.</summary>
+        public int? GradeLevelTo { get; set; }
+
         /// <summary>Optional UTC opening time. Null means no lower bound.</summary>
         public DateTime? OpensAtUtc { get; set; }
 

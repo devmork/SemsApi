@@ -4,8 +4,6 @@ namespace SemsApi.DTO.Facility
     {
         public int FacilityId { get; set; }
         public string FacilityName { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public string? Location { get; set; }
 
         public int EvaluationTypeId { get; set; }
         public int FormId { get; set; }

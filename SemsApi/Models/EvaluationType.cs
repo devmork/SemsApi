@@ -1,16 +1,14 @@
 namespace SemsApi.Models
 {
-    /// <summary>
-    /// Represents a type of evaluation (e.g. "Teacher Evaluation", "Facility Evaluation").
-    /// Kept minimal per requirement: only an Id and a name.
-    /// </summary>
     public class EvaluationType
     {
         public int EvaluationTypeId { get; set; }
+        public string EvaluationTypeName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Display name of the evaluation type e.g. "Teacher Evaluation", "Facility Evaluation"
+        /// True when forms of this type are evaluated as a facility/service
+        /// (e.g. Clinic, Canteen) instead of a subject teacher.
         /// </summary>
-        public string EvaluationTypeName { get; set; } = string.Empty;
+        public bool IsFacility { get; set; }
     }
 }

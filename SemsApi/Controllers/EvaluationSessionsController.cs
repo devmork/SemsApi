@@ -13,7 +13,7 @@ namespace SemsApi.Controllers
     /// and controls when the EvaluationForm becomes an actionable evaluation opportunity.
     /// </summary>
     [ApiController]
-    [Authorize(Roles = "QA,Admin")]
+    [Authorize]
     [Route("api/evaluation/sessions")]
     public class EvaluationSessionsController : ControllerBase
     {
@@ -37,13 +37,15 @@ namespace SemsApi.Controllers
             [FromQuery] bool onlyOpen = false,
             CancellationToken ct = default)
         {
+            var isStudent = User.IsInRole("Student");
             return await _service.GetAllAsync(
                 formId,
                 schoolYear,
                 term,
                 status,
                 onlyOpen,
-                studentView: User.IsInRole("Student"),
+                studentView: isStudent,
+                studentUserId: isStudent ? UserContextResolver.GetUserId(HttpContext) : null,
                 ct);
         }
 
@@ -55,15 +57,18 @@ namespace SemsApi.Controllers
             int id,
             CancellationToken ct = default)
         {
+            var isStudent = User.IsInRole("Student");
             return await _service.GetByIdAsync(
                 id,
-                studentView: User.IsInRole("Student"),
+                studentView: isStudent,
+                studentUserId: isStudent ? UserContextResolver.GetUserId(HttpContext) : null,
                 ct);
         }
 
         /// <summary>
         /// Create a Draft session from an existing EvaluationForm. CreatedBy is captured from the
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpPost]
         public async Task<ActionResult> Create(
             [FromBody] EvaluationSessionCreateRequest request,
@@ -79,6 +84,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Update status, window or notes. Closed -> Open is only allowed for Admins.
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpPut("{id:int}")]
         public async Task<ActionResult> Update(
             int id,
@@ -96,6 +102,7 @@ namespace SemsApi.Controllers
         /// Delete a session. Open sessions must be closed first; sessions with submissions
         /// must be archived instead.
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id, CancellationToken ct = default)
         {
@@ -106,6 +113,7 @@ namespace SemsApi.Controllers
         /// Convenience endpoint: move a Draft session to Open after validating the EvaluationForm,
         /// completeness rules and window.
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpPost("{id:int}/open")]
         public async Task<ActionResult> Open(int id, CancellationToken ct = default)
         {
@@ -115,6 +123,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Get the list of students who have already submitted an evaluation for this session.
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpGet("{id:int}/submissions")]
         public async Task<ActionResult<List<SessionSubmissionDto>>> GetSubmissions(
             int id,
@@ -126,6 +135,7 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Convenience endpoint: move a Draft/Open session to Closed.
         /// </summary>
+        [Authorize(Roles = "QA,Admin")]
         [HttpPost("{id:int}/close")]
         public async Task<ActionResult> Close(int id, CancellationToken ct = default)
         {
