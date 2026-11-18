@@ -22,42 +22,49 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get the categories and questions of an evaluation type.
-        /// Example: /api/evaluation/EvaluationForm?evaluationTypeId=2
+        /// Get the categories and questions of an evaluation form.
+        /// Example: /api/evaluation/form?formId=3
         /// </summary>
         [Authorize(Roles = "QA,Admin")]
         [HttpGet("form")]
         public async Task<ActionResult<List<EvaluationCategoryDto>>> GetForm(
-            [FromQuery] int evaluationTypeId)
+            [FromQuery] int formId)
         {
-            if (!await _context.EvaluationTypes.AnyAsync(t => t.EvaluationTypeId == evaluationTypeId))
-                return NotFound(new { message = "Evaluation type not found." });
-
-            var categories = await _context.TeacherEvaluationCategories
+            var form = await _context.Forms
                 .AsNoTracking()
-                .Where(c => c.EvaluationTypeId == evaluationTypeId)
-                .OrderBy(c => c.CategoryId)
+                .FirstOrDefaultAsync(f => f.FormId == formId);
+
+            if (form is null)
+                return NotFound(new { message = "Evaluation form not found." });
+
+            var formCategories = await _context.EvaluationFormCategories
+                .AsNoTracking()
+                .Include(fc => fc.EvaluationCategory)
+                .Where(fc => fc.FormId == formId && fc.IsActive)
+                .OrderBy(fc => fc.DisplayOrder)
+                .ThenBy(fc => fc.CategoryId)
                 .ToListAsync();
 
-            var categoryIds = categories.Select(c => c.CategoryId).ToList();
+            var categoryIds = formCategories.Select(fc => fc.CategoryId).ToList();
 
-            var questions = await _context.EvaluationQuestions
+            var questions = await _context.EvaluationFormQuestions
                 .AsNoTracking()
-                .Where(q => categoryIds.Contains(q.CategoryId))
-                .OrderBy(q => q.CategoryId)
-                .ThenBy(q => q.QuestionId)
+                .Include(q => q.FormCategory)
+                .Where(q => categoryIds.Contains(q.FormCategory.CategoryId))
+                .OrderBy(q => q.FormCategory.DisplayOrder)
+                .ThenBy(q => q.DisplayOrder)
                 .ToListAsync();
 
-            var result = categories.Select(c => new EvaluationCategoryDto
+            var result = formCategories.Select(fc => new EvaluationCategoryDto
             {
-                CategoryId = c.CategoryId,
-                CategoryName = c.CategoryName,
-                CategoryRate = c.CategoryRate,
+                CategoryId = fc.CategoryId,
+                CategoryName = fc.EvaluationCategory?.CategoryName,
+                CategoryRate = fc.EvaluationCategory?.CategoryRate,
                 Questions = questions
-                    .Where(q => q.CategoryId == c.CategoryId)
+                    .Where(q => q.FormCategory.CategoryId == fc.CategoryId)
                     .Select(q => new EvaluationQuestionDto
                     {
-                        QuestionId = q.QuestionId,
+                        QuestionId = q.FormQuestionId,
                         QuestionName = q.QuestionName
                     })
                     .ToList()
@@ -67,29 +74,33 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Get questions (optionally filtered by evaluation type and/or category)
+        /// Get form-scoped questions (optionally filtered by form and/or category).
         /// </summary>
         [Authorize(Roles = "QA,Admin")]
         [HttpGet("questions")]
         public async Task<ActionResult> GetQuestions(
-            [FromQuery] int? evaluationTypeId = null,
+            [FromQuery] int? formId = null,
             [FromQuery] int? categoryId = null)
         {
-            var query = _context.EvaluationQuestions.AsNoTracking().AsQueryable();
+            var query = _context.EvaluationFormQuestions
+                .AsNoTracking()
+                .AsQueryable();
 
-            if (evaluationTypeId.HasValue)
-                query = query.Where(q => q.Category.EvaluationTypeId == evaluationTypeId.Value);
+            if (formId.HasValue)
+                query = query.Where(q => q.FormCategory.FormId == formId.Value);
 
             if (categoryId.HasValue)
-                query = query.Where(q => q.CategoryId == categoryId.Value);
+                query = query.Where(q => q.FormCategory.CategoryId == categoryId.Value);
 
             var data = await query
-                .OrderBy(q => q.CategoryId)
-                .ThenBy(q => q.QuestionId)
+                .OrderBy(q => q.FormCategoryId)
+                .ThenBy(q => q.DisplayOrder)
                 .Select(q => new
                 {
-                    q.CategoryId,
-                    q.QuestionId,
+                    q.FormCategoryId,
+                    FormId = q.FormCategory.FormId,
+                    CategoryId = q.FormCategory.CategoryId,
+                    QuestionId = q.FormQuestionId,
                     q.QuestionName
                 })
                 .ToListAsync();

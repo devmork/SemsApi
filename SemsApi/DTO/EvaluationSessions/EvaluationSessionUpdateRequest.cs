@@ -13,6 +13,12 @@ namespace SemsApi.DTO.EvaluationSessions
         /// <summary>Optional new closing time. Null means leave unchanged.</summary>
         public DateTime? ClosesAtUtc { get; set; }
 
+        /// <summary>Optional new audience lower grade bound. Null means leave unchanged.</summary>
+        public int? GradeLevelFrom { get; set; }
+
+        /// <summary>Optional new audience upper grade bound. Null means leave unchanged.</summary>
+        public int? GradeLevelTo { get; set; }
+
         /// <summary>Optional notes. Empty string clears notes.</summary>
         public string? Notes { get; set; }
     }

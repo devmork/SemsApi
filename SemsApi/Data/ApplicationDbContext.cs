@@ -21,7 +21,9 @@ namespace SemsApi.Data
         public DbSet<EvaluationForm> Forms => Set<EvaluationForm>();
         public DbSet<EvaluationType> EvaluationTypes => Set<EvaluationType>();
         public DbSet<EvaluationCategory> TeacherEvaluationCategories => Set<EvaluationCategory>();
-        public DbSet<EvaluationQuestion> EvaluationQuestions => Set<EvaluationQuestion>();
+        public DbSet<EvaluationFormCategory> EvaluationFormCategories => Set<EvaluationFormCategory>();
+        public DbSet<EvaluationFormQuestion> EvaluationFormQuestions => Set<EvaluationFormQuestion>();
+        public DbSet<EvaluationFormQuestionAnswer> EvaluationFormQuestionAnswers => Set<EvaluationFormQuestionAnswer>();
         public DbSet<TeacherEvaluationComment> TeacherEvaluationComments => Set<TeacherEvaluationComment>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         // Subject / SubjectOffering / Enrollment
@@ -180,15 +182,8 @@ namespace SemsApi.Data
                 e.HasKey(x => x.FormId);
                 e.Property(x => x.FormId).ValueGeneratedOnAdd();
 
-                e.Property(x => x.Code).IsRequired().HasMaxLength(20);
-                e.HasIndex(x => x.Code).IsUnique();
-
-                e.Property(x => x.GradeBand).HasMaxLength(30);
-                e.Property(x => x.TargetType).IsRequired().HasMaxLength(30);
-
                 e.Property(x => x.Title).IsRequired().HasMaxLength(200);
                 e.Property(x => x.Description).HasMaxLength(1000);
-                e.HasIndex(x => x.ProgramId);
                 e.HasIndex(x => x.EvaluationTypeId);
 
                 e.HasOne(x => x.EvaluationType)
@@ -217,17 +212,53 @@ namespace SemsApi.Data
                  .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity<EvaluationQuestion>(e =>
+            modelBuilder.Entity<EvaluationFormCategory>(e =>
             {
-                e.ToTable("EvaluationQuestion", "Eval");
-                e.HasKey(x => x.QuestionId);
-                e.Property(x => x.QuestionId).ValueGeneratedOnAdd();
-                e.Property(x => x.QuestionName).HasColumnType("nvarchar(max)");
-                e.HasIndex(x => x.CategoryId);
+                e.ToTable("EvaluationFormCategory", "Eval");
+                e.HasKey(x => x.FormCategoryId);
+                e.Property(x => x.FormCategoryId).ValueGeneratedOnAdd();
 
-                e.HasOne(x => x.Category)
+                e.HasIndex(x => new { x.FormId, x.CategoryId }).IsUnique();
+
+                e.HasOne(x => x.EvaluationForm)
+                 .WithMany()
+                 .HasForeignKey(x => x.FormId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.EvaluationCategory)
                  .WithMany()
                  .HasForeignKey(x => x.CategoryId)
+                 .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<EvaluationFormQuestion>(e =>
+            {
+                e.ToTable("EvaluationFormQuestion", "Eval");
+                e.HasKey(x => x.FormQuestionId);
+                e.Property(x => x.FormQuestionId).ValueGeneratedOnAdd();
+                e.Property(x => x.QuestionName).HasColumnType("nvarchar(max)");
+                e.Property(x => x.Points).HasPrecision(5, 2);
+
+                e.HasIndex(x => new { x.FormCategoryId, x.DisplayOrder }).IsUnique();
+
+                e.HasOne(x => x.FormCategory)
+                 .WithMany()
+                 .HasForeignKey(x => x.FormCategoryId)
+                 .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<EvaluationFormQuestionAnswer>(e =>
+            {
+                e.ToTable("EvaluationFormQuestionAnswer", "Eval");
+                e.HasKey(x => x.AnswerId);
+                e.Property(x => x.AnswerId).ValueGeneratedOnAdd();
+                e.Property(x => x.RateVal).HasPrecision(5, 2);
+
+                e.HasIndex(x => new { x.SubmissionId, x.FormQuestionId }).IsUnique();
+
+                e.HasOne(x => x.FormQuestion)
+                 .WithMany()
+                 .HasForeignKey(x => x.FormQuestionId)
                  .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -345,6 +376,10 @@ namespace SemsApi.Data
                 e.HasIndex(x => new { x.SubmissionId, x.QuestionId }).IsUnique();
                 e.HasOne(x => x.Submission).WithMany(s => s.Answers)
                     .HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(x => x.Question)
+                    .WithMany()
+                    .HasForeignKey(x => x.QuestionId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<EvaluationSession>(e =>
@@ -359,8 +394,9 @@ namespace SemsApi.Data
                 e.Property(x => x.Notes).HasMaxLength(1000);
 
                 // One non-archived session per EvaluationForm + SchoolYear + Term.
-                // Archived sessions are historical and may repeat the same period.
-                e.HasIndex(x => new { x.FormId, x.SchoolYear, x.Term })
+                // A form may have multiple scoped sessions per period (different grade ranges);
+                // archived sessions are historical and may repeat the same period.
+                e.HasIndex(x => new { x.FormId, x.SchoolYear, x.Term, x.GradeLevelFrom, x.GradeLevelTo })
                     .IsUnique()
                     .HasFilter("[Status] <> 3");
 
@@ -396,7 +432,10 @@ namespace SemsApi.Data
                 e.Property(x => x.SchoolYear).IsRequired().HasMaxLength(9);
                 e.Property(x => x.Term).IsRequired();
 
-                e.HasIndex(x => new { x.StudentId, x.FacilityId, x.SchoolYear, x.Term }).IsUnique();
+                e.HasIndex(x => new { x.StudentId, x.FacilityId, x.EvaluationSessionId })
+                    .IsUnique()
+                    .HasFilter("[EvaluationSessionId] IS NOT NULL");
+                e.HasIndex(x => new { x.StudentId, x.FacilityId, x.SchoolYear, x.Term });
                 e.HasIndex(x => x.FacilityId);
                 e.HasIndex(x => x.EvaluationSessionId);
 
@@ -420,6 +459,10 @@ namespace SemsApi.Data
                 e.HasIndex(x => new { x.SubmissionId, x.QuestionId }).IsUnique();
                 e.HasOne(x => x.Submission).WithMany(s => s.Answers)
                     .HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(x => x.Question)
+                    .WithMany()
+                    .HasForeignKey(x => x.QuestionId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

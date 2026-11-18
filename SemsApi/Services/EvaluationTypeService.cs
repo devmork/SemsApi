@@ -37,7 +37,8 @@ namespace SemsApi.Services
                 .Select(t => new EvaluationTypeResponseDto
                 {
                     EvaluationTypeId = t.EvaluationTypeId,
-                    EvaluationTypeName = t.EvaluationTypeName
+                    EvaluationTypeName = t.EvaluationTypeName,
+                    IsFacility = t.IsFacility
                 })
                 .ToListAsync();
 
@@ -81,7 +82,8 @@ namespace SemsApi.Services
 
             var entity = new EvaluationType
             {
-                EvaluationTypeName = name
+                EvaluationTypeName = name,
+                IsFacility = request.IsFacility ?? false
             };
 
             _context.EvaluationTypes.Add(entity);
@@ -134,6 +136,9 @@ namespace SemsApi.Services
             }
 
             entity.EvaluationTypeName = name;
+
+            if (request.IsFacility.HasValue)
+                entity.IsFacility = request.IsFacility.Value;
 
             await _context.SaveChangesAsync();
 

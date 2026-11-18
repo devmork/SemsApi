@@ -1,26 +1,15 @@
 namespace SemsApi.Models.Eval
 {
     /// <summary>
-    /// A EvaluationForm (e.g. the Teacher Evaluation EvaluationForm for Grade 4 to 6, or the Canteen Evaluation EvaluationForm).
-    /// Its categories and questions are the categories (and their questions) that belong to its EvaluationType.
+    /// A reusable evaluation template (e.g. the Teacher Evaluation template for Grade 4 to 6,
+    /// or the Canteen Evaluation template). Its categories and questions are authored per form;
+    /// targeting (which students, which term) lives on <c>EvaluationSession</c>, not here.
     /// </summary>
     public class EvaluationForm
     {
         public int FormId { get; set; }
 
-        /// <summary>0 = all students, 1 = Preschool to Grade 3, 2 = Grade 4 to 6, 3 = JHS to SHS. Decides which students get the EvaluationForm.</summary>
-        public int ProgramId { get; set; }
-
-        /// <summary>Short unique code e.g. "PRE-G3", "G4-G6", "CAFETERIA".</summary>
-        public string Code { get; set; } = string.Empty;
-
-        /// <summary>Grade band label e.g. "Preschool-G3", "G4-G6", "JHS-SHS". Optional.</summary>
-        public string? GradeBand { get; set; }
-
-        /// <summary>"SubjectTeacher" or "Facility". Defaults to "SubjectTeacher".</summary>
-        public string TargetType { get; set; } = "SubjectTeacher";
-
-        /// <summary>FK to EvaluationType - decides which categories and questions the EvaluationForm contains.</summary>
+        /// <summary>FK to EvaluationType - decides the kind of evaluation (subject teacher vs facility).</summary>
         public int EvaluationTypeId { get; set; }
         public EvaluationType EvaluationType { get; set; } = null!;
 

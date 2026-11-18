@@ -111,14 +111,13 @@ namespace SemsApi.Services
             {
                 EvaluationSessionId = session.EvaluationSessionId,
                 FormId = session.FormId,
-                FormCode = session.EvaluationForm.Code,
                 FormTitle = session.EvaluationForm.Title,
                 EvaluationTypeId = session.EvaluationForm.EvaluationTypeId,
                 EvaluationTypeName = session.EvaluationForm.EvaluationType.EvaluationTypeName,
-                TargetType = session.EvaluationForm.TargetType,
-                ProgramId = session.EvaluationForm.ProgramId,
                 SchoolYear = session.SchoolYear,
                 Term = session.Term,
+                GradeLevelFrom = session.GradeLevelFrom,
+                GradeLevelTo = session.GradeLevelTo,
                 OpensAtUtc = session.OpensAtUtc,
                 ClosesAtUtc = session.ClosesAtUtc,
                 Status = session.Status.ToString(),
@@ -158,6 +157,8 @@ namespace SemsApi.Services
                     s.FormId == request.FormId &&
                     s.SchoolYear == schoolYear &&
                     s.Term == request.Term &&
+                    s.GradeLevelFrom == request.GradeLevelFrom &&
+                    s.GradeLevelTo == request.GradeLevelTo &&
                     s.Status != EvaluationSessionStatus.Archived,
                     ct);
 
@@ -165,7 +166,7 @@ namespace SemsApi.Services
             {
                 return new ConflictObjectResult(new
                 {
-                    message = "An evaluation session already exists for this EvaluationForm, SchoolYear and Term. Archive the existing session before creating another."
+                    message = "An evaluation session already exists for this EvaluationForm, SchoolYear, Term and grade range. Archive the existing session before creating another."
                 });
             }
 
@@ -174,6 +175,8 @@ namespace SemsApi.Services
                 FormId = request.FormId,
                 SchoolYear = schoolYear,
                 Term = request.Term,
+                GradeLevelFrom = request.GradeLevelFrom,
+                GradeLevelTo = request.GradeLevelTo,
                 OpensAtUtc = request.OpensAtUtc,
                 ClosesAtUtc = request.ClosesAtUtc,
                 Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
@@ -280,6 +283,18 @@ namespace SemsApi.Services
 
             if (request.ClosesAtUtc.HasValue)
                 session.ClosesAtUtc = request.ClosesAtUtc;
+
+            if (request.GradeLevelFrom.HasValue)
+                session.GradeLevelFrom = request.GradeLevelFrom;
+
+            if (request.GradeLevelTo.HasValue)
+                session.GradeLevelTo = request.GradeLevelTo;
+
+            var gradeError = EvaluationSessionHelper.ValidateGradeRange(
+                session.GradeLevelFrom,
+                session.GradeLevelTo);
+            if (gradeError is not null)
+                return new BadRequestObjectResult(new { message = gradeError });
 
             if (request.Notes is not null)
             {
@@ -520,7 +535,7 @@ namespace SemsApi.Services
                 return "The EvaluationForm is inactive and cannot be opened for evaluation.";
 
             var incompleteError = await FormCompletenessHelper
-                .GetIncompleteFormErrorAsync(_context, EvaluationForm.EvaluationTypeId, ct);
+                .GetIncompleteFormErrorAsync(_context, EvaluationForm.FormId, ct);
 
             if (incompleteError is not null)
                 return incompleteError;
@@ -538,30 +553,27 @@ namespace SemsApi.Services
             EvaluationForm EvaluationForm,
             CancellationToken ct)
         {
-            var categories = await _context.TeacherEvaluationCategories
+            var formCategories = await _context.EvaluationFormCategories
                 .AsNoTracking()
-                .Where(c => c.EvaluationTypeId == EvaluationForm.EvaluationTypeId)
-                .OrderBy(c => c.CategoryId)
+                .Include(fc => fc.EvaluationCategory)
+                .Where(fc => fc.FormId == EvaluationForm.FormId && fc.IsActive)
+                .OrderBy(fc => fc.DisplayOrder)
+                .ThenBy(fc => fc.CategoryId)
                 .ToListAsync(ct);
 
-            var categoryNos = categories
-                .Select(c => c.CategoryId)
-                .ToList();
+            var categoryIds = formCategories.Select(fc => fc.CategoryId).ToList();
 
-            var questions = await _context.EvaluationQuestions
+            var formQuestions = await _context.EvaluationFormQuestions
                 .AsNoTracking()
-                .Where(q => categoryNos.Contains(q.CategoryId))
-                .OrderBy(q => q.CategoryId)
-                .ThenBy(q => q.QuestionId)
+                .Include(q => q.FormCategory)
+                .Where(q => categoryIds.Contains(q.FormCategory.CategoryId))
+                .OrderBy(q => q.FormCategory.DisplayOrder)
+                .ThenBy(q => q.DisplayOrder)
                 .ToListAsync(ct);
 
             return new FormDetailDto
             {
                 FormId = EvaluationForm.FormId,
-                Code = EvaluationForm.Code,
-                GradeBand = EvaluationForm.GradeBand,
-                TargetType = EvaluationForm.TargetType,
-                ProgramId = EvaluationForm.ProgramId,
                 EvaluationTypeId = EvaluationForm.EvaluationTypeId,
                 EvaluationTypeName = EvaluationForm.EvaluationType.EvaluationTypeName,
                 Title = EvaluationForm.Title,
@@ -569,16 +581,16 @@ namespace SemsApi.Services
                 CreatedBy = EvaluationForm.CreatedBy,
                 IsActive = EvaluationForm.IsActive,
                 CreatedAt = EvaluationForm.CreatedAt,
-                Categories = categories.Select(c => new EvaluationCategoryDto
+                Categories = formCategories.Select(fc => new EvaluationCategoryDto
                 {
-                    CategoryId = c.CategoryId,
-                    CategoryName = c.CategoryName,
-                    CategoryRate = c.CategoryRate,
-                    Questions = questions
-                        .Where(q => q.CategoryId == c.CategoryId)
+                    CategoryId = fc.CategoryId,
+                    CategoryName = fc.EvaluationCategory?.CategoryName,
+                    CategoryRate = fc.EvaluationCategory?.CategoryRate,
+                    Questions = formQuestions
+                        .Where(q => q.FormCategory.CategoryId == fc.CategoryId)
                         .Select(q => new EvaluationQuestionDto
                         {
-                            QuestionId = q.QuestionId,
+                            QuestionId = q.FormQuestionId,
                             QuestionName = q.QuestionName
                         })
                         .ToList()

@@ -25,7 +25,20 @@ namespace SemsApi.Services
             if (student is null)
                 return new NotFoundObjectResult(new { message = "No student profile linked to this user." });
 
+            if (!string.Equals(student.Status, "Active", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ObjectResult(new { message = "Student profile is not active." })
+                {
+                    StatusCode = 403
+                };
+            }
+
             var now = DateTime.UtcNow;
+
+            // Default to the student's own school year unless the caller overrides it.
+            var effectiveSchoolYear = !string.IsNullOrWhiteSpace(schoolYear)
+                ? schoolYear.Trim()
+                : (string.IsNullOrWhiteSpace(student.SchoolYear) ? null : student.SchoolYear);
 
             // Facility sessions currently open for this student's SY/Term
             var sessionsQuery = _context.EvaluationSessions.AsNoTracking()
@@ -34,15 +47,27 @@ namespace SemsApi.Services
                     s.Status == EvaluationSessionStatus.Open &&
                     (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
                     (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now) &&
-                    s.EvaluationForm.TargetType == "Facility" &&
-                    s.EvaluationForm.IsActive == 1);
+                    s.EvaluationForm.IsActive == 1 &&
+                    s.EvaluationForm.EvaluationType.IsFacility);
 
-            if (!string.IsNullOrWhiteSpace(schoolYear))
-                sessionsQuery = sessionsQuery.Where(s => s.SchoolYear == schoolYear);
+            if (!string.IsNullOrWhiteSpace(effectiveSchoolYear))
+                sessionsQuery = sessionsQuery.Where(s => s.SchoolYear == effectiveSchoolYear);
             if (term.HasValue)
                 sessionsQuery = sessionsQuery.Where(s => s.Term == term.Value);
 
             var sessions = await sessionsQuery.ToListAsync(ct);
+
+            // Honour the session grade scope when the student's grade level is known.
+            var studentGrade = await ResolveStudentGradeAsync(student, ct);
+            if (studentGrade.HasValue)
+            {
+                sessions = sessions
+                    .Where(s =>
+                        (!s.GradeLevelFrom.HasValue || s.GradeLevelFrom.Value <= studentGrade.Value) &&
+                        (!s.GradeLevelTo.HasValue || s.GradeLevelTo.Value >= studentGrade.Value))
+                    .ToList();
+            }
+
             if (sessions.Count == 0)
                 return new OkObjectResult(new List<FacilityEvaluationAssignmentDto>());
 
@@ -107,6 +132,14 @@ namespace SemsApi.Services
             if (student is null)
                 return new NotFoundObjectResult(new { message = "No student profile linked to this user." });
 
+            if (!string.Equals(student.Status, "Active", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ObjectResult(new { message = "Student profile is not active." })
+                {
+                    StatusCode = 403
+                };
+            }
+
             if (request.Answers is null || request.Answers.Count == 0)
                 return new BadRequestObjectResult(new { message = "At least one answer is required." });
 
@@ -122,12 +155,24 @@ namespace SemsApi.Services
 
             var session = await _context.EvaluationSessions.AsNoTracking()
                 .Include(s => s.EvaluationForm)
+                    .ThenInclude(f => f.EvaluationType)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == request.EvaluationSessionId, ct);
 
             if (session is null)
                 return new BadRequestObjectResult(new { message = "Evaluation session not found." });
 
-            if (session.EvaluationForm.TargetType != "Facility")
+            var studentGrade = await ResolveStudentGradeAsync(student, ct);
+            if (studentGrade.HasValue &&
+                ((session.GradeLevelFrom.HasValue && studentGrade.Value < session.GradeLevelFrom.Value) ||
+                 (session.GradeLevelTo.HasValue && studentGrade.Value > session.GradeLevelTo.Value)))
+            {
+                return new BadRequestObjectResult(new
+                {
+                    message = "This evaluation session is not open for your grade level."
+                });
+            }
+
+            if (!FormHelper.IsFacilityEvaluation(session.EvaluationForm.EvaluationType))
                 return new BadRequestObjectResult(new
                 {
                     message = "The selected evaluation session is not a facility evaluation session."
@@ -152,24 +197,27 @@ namespace SemsApi.Services
                     .AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId, ct))
                 return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
-            // Validate the questions belong to this evaluation type and exist
+            // Validate the questions belong to this form's selected categories
             if (request.Answers.Select(a => a.QuestionId).Distinct().Count() != request.Answers.Count)
                 return new BadRequestObjectResult(new { message = "Duplicate question IDs are not allowed." });
 
             var questionIds = request.Answers.Select(a => a.QuestionId).Distinct().ToList();
-            var validQuestions = await _context.EvaluationQuestions.AsNoTracking()
-                .Where(q => questionIds.Contains(q.QuestionId))
-                .Select(q => new { q.QuestionId, q.CategoryId, q.Category.EvaluationTypeId })
+            var validQuestions = await _context.EvaluationFormQuestions.AsNoTracking()
+                .Join(
+                    _context.EvaluationFormCategories.AsNoTracking(),
+                    q => q.FormCategoryId,
+                    fc => fc.FormCategoryId,
+                    (q, fc) => new { q.FormQuestionId, fc.CategoryId, fc.FormId })
+                .Where(x => questionIds.Contains(x.FormQuestionId) && x.FormId == session.FormId)
                 .ToListAsync(ct);
 
             if (validQuestions.Count != questionIds.Count)
                 return new BadRequestObjectResult(new { message = "One or more question ids are invalid." });
 
-            if (validQuestions.Any(q => q.EvaluationTypeId != request.EvaluationTypeId))
-                return new BadRequestObjectResult(new
-                {
-                    message = "One or more questions do not belong to the selected evaluation type."
-                });
+            // Ensure each answer's CategoryId matches the question's form category
+            var questionMap = validQuestions.ToDictionary(q => q.FormQuestionId);
+            if (request.Answers.Any(a => !questionMap.TryGetValue(a.QuestionId, out var q) || q.CategoryId != a.CategoryId))
+                return new BadRequestObjectResult(new { message = "One or more answers have a CategoryId that does not match the question." });
 
             // Validate rating values (0..5 is the current frontend scale; extend if needed)
             if (request.Answers.Any(a => a.RateVal < 0 || a.RateVal > 5))
@@ -178,16 +226,16 @@ namespace SemsApi.Services
                     message = "RateVal must be between 0 and 5."
                 });
 
-            // Duplicate submission check (aligned with DB unique index: StudentId, FacilityId, SchoolYear, Term)
+            // Duplicate submission check (aligned with the DB unique index:
+            // StudentId, FacilityId, EvaluationSessionId)
             var duplicate = await _context.FacilityEvaluationSubmissions.AnyAsync(s =>
                 s.StudentId == student.StudentId &&
                 s.FacilityId == facility.FacilityId &&
-                s.SchoolYear == session.SchoolYear &&
-                s.Term == session.Term, ct);
+                s.EvaluationSessionId == session.EvaluationSessionId, ct);
             if (duplicate)
                 return new ConflictObjectResult(new
                 {
-                    message = "This facility has already been evaluated for this school year and term."
+                    message = "This facility has already been evaluated for this evaluation session."
                 });
 
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
@@ -339,9 +387,9 @@ namespace SemsApi.Services
             }
 
             var questionIds = questionResults.Select(q => q.QuestionId).ToList();
-            var questions = await _context.EvaluationQuestions.AsNoTracking()
-                .Where(q => questionIds.Contains(q.QuestionId)).ToListAsync(ct);
-            var qMap = questions.ToDictionary(q => q.QuestionId);
+            var questions = await _context.EvaluationFormQuestions.AsNoTracking()
+                .Where(q => questionIds.Contains(q.FormQuestionId)).ToListAsync(ct);
+            var qMap = questions.ToDictionary(q => q.FormQuestionId);
             foreach (var q in questionResults)
                 if (qMap.TryGetValue(q.QuestionId, out var qn)) q.QuestionName = qn.QuestionName;
 
@@ -368,11 +416,12 @@ namespace SemsApi.Services
         {
             var session = await _context.EvaluationSessions.AsNoTracking()
                 .Include(s => s.EvaluationForm)
+                    .ThenInclude(f => f.EvaluationType)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == sessionId, ct);
             if (session is null)
                 return new NotFoundObjectResult(new { message = "Evaluation session not found." });
 
-            if (session.EvaluationForm.TargetType != "Facility")
+            if (!FormHelper.IsFacilityEvaluation(session.EvaluationForm.EvaluationType))
                 return new BadRequestObjectResult(new
                 {
                     message = "This session is not a facility evaluation session."
@@ -394,6 +443,26 @@ namespace SemsApi.Services
                 .ToListAsync(ct);
 
             return new OkObjectResult(data);
+        }
+
+        // -----------------------------------------------------------------
+        // HELPERS
+        // -----------------------------------------------------------------
+        /// <summary>
+        /// Resolves the student's numeric grade level. Prefers the most recent term
+        /// enrollment (canonical numeric value) and falls back to the legacy free-text
+        /// Student.GradeLevel. Returns null when neither yields a usable grade.
+        /// </summary>
+        private async Task<int?> ResolveStudentGradeAsync(Student student, CancellationToken ct)
+        {
+            var enrollmentGrade = await _context.StudentTermEnrollments.AsNoTracking()
+                .Where(e => e.StudentId == student.StudentId)
+                .OrderByDescending(e => e.SchoolYear)
+                .ThenByDescending(e => e.Term)
+                .Select(e => (int?)e.GradeLevel)
+                .FirstOrDefaultAsync(ct);
+
+            return enrollmentGrade ?? GradeLevelHelper.ParseDisplay(student.GradeLevel);
         }
     }
 }

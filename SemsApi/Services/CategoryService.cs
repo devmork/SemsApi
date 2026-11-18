@@ -135,7 +135,6 @@ namespace SemsApi.Services
 
             category.EvaluationTypeId = newEvaluationTypeId;
             category.CategoryName = request.CategoryName!.Trim();
-            category.CategoryName = request.CategoryName!.Trim();
             category.CategoryRate = Math.Round(request.CategoryRate!.Value, 2);
 
             await _context.SaveChangesAsync();
@@ -159,14 +158,22 @@ namespace SemsApi.Services
             if (category is null)
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
-            var hasDependentQuestions = await _context.EvaluationQuestions
-                .AnyAsync(q => q.CategoryId == categoryId);
+            var hasDependentFormCategories = await _context.EvaluationFormCategories
+                .AnyAsync(fc => fc.CategoryId == categoryId);
 
-            if (hasDependentQuestions)
+            var hasDependentQuestions = await _context.EvaluationFormQuestions
+                .Join(
+                    _context.EvaluationFormCategories,
+                    q => q.FormCategoryId,
+                    fc => fc.FormCategoryId,
+                    (q, fc) => new { fc.CategoryId })
+                .AnyAsync(x => x.CategoryId == categoryId);
+
+            if (hasDependentFormCategories || hasDependentQuestions)
             {
                 return new ConflictObjectResult(new
                 {
-                    message = "Cannot delete this category because evaluation questions are associated with it."
+                    message = "Cannot delete this category because it is referenced by forms or evaluation questions."
                 });
             }
 
