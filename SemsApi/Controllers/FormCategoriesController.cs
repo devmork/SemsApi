@@ -10,7 +10,7 @@ namespace SemsApi.Controllers
     /// Manages which shared evaluation categories belong to a form.
     /// </summary>
     [ApiController]
-    [Authorize(Roles = "QA,Admin")]
+    [Authorize]
     [Route("api/evaluation/forms/{formId:int}/categories")]
     public class FormCategoryController : ControllerBase
     {

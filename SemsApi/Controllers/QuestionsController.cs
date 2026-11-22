@@ -12,7 +12,7 @@ namespace SemsApi.Controllers
     /// All logic lives in IQuestionService; this controller only handles HTTP concerns.
     /// </summary>
     [ApiController]
-    [Authorize(Roles = "QA,Admin")]
+    [Authorize]
     [Route("api/evaluation/forms/{formId:int}/categories/{categoryId:int}/questions")]
     public class QuestionController : ControllerBase
     {

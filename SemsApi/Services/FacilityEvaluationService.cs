@@ -220,10 +220,10 @@ namespace SemsApi.Services
                 return new BadRequestObjectResult(new { message = "One or more answers have a CategoryId that does not match the question." });
 
             // Validate rating values (0..5 is the current frontend scale; extend if needed)
-            if (request.Answers.Any(a => a.RateVal < 0 || a.RateVal > 5))
+            if (request.Answers.Any(a => a.RateVal < 1 || a.RateVal > 5))
                 return new BadRequestObjectResult(new
                 {
-                    message = "RateVal must be between 0 and 5."
+                    message = "RateVal must be between 1 and 5."
                 });
 
             // Duplicate submission check (aligned with the DB unique index:

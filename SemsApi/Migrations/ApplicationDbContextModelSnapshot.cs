@@ -17,7 +17,7 @@ namespace SemsApi.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -507,7 +507,7 @@ namespace SemsApi.Migrations
                     b.HasIndex("FacilityName")
                         .IsUnique();
 
-                    b.ToTable("Facilities", (string)null);
+                    b.ToTable("Facilities");
                 });
 
             modelBuilder.Entity("SemsApi.Models.FacilityEvaluationAnswer", b =>
@@ -626,7 +626,7 @@ namespace SemsApi.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens", (string)null);
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Role", b =>
@@ -689,6 +689,9 @@ namespace SemsApi.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<bool>("IsPlaceholder")
+                        .HasColumnType("bit");
+
                     b.Property<string>("SchoolYear")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -720,7 +723,7 @@ namespace SemsApi.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Students", (string)null);
+                    b.ToTable("Students");
                 });
 
             modelBuilder.Entity("SemsApi.Models.StudentSubjectEnrollment", b =>
@@ -755,7 +758,7 @@ namespace SemsApi.Migrations
                     b.HasIndex("StudentId", "SubjectOfferingId")
                         .IsUnique();
 
-                    b.ToTable("StudentSubjectEnrollments", (string)null);
+                    b.ToTable("StudentSubjectEnrollments");
                 });
 
             modelBuilder.Entity("SemsApi.Models.StudentTermEnrollment", b =>
@@ -798,7 +801,7 @@ namespace SemsApi.Migrations
                     b.HasIndex("StudentId", "SchoolYear", "Term")
                         .IsUnique();
 
-                    b.ToTable("StudentTermEnrollments", (string)null);
+                    b.ToTable("StudentTermEnrollments");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Subject", b =>
@@ -827,7 +830,7 @@ namespace SemsApi.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Subjects", (string)null);
+                    b.ToTable("Subjects");
                 });
 
             modelBuilder.Entity("SemsApi.Models.SubjectOffering", b =>
@@ -889,7 +892,7 @@ namespace SemsApi.Migrations
                     b.HasIndex("EdpCode", "Section", "SchoolYear", "Term")
                         .IsUnique();
 
-                    b.ToTable("SubjectOfferings", (string)null);
+                    b.ToTable("SubjectOfferings");
                 });
 
             modelBuilder.Entity("SemsApi.Models.Teacher", b =>
@@ -926,7 +929,7 @@ namespace SemsApi.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Teachers", (string)null);
+                    b.ToTable("Teachers");
                 });
 
             modelBuilder.Entity("SemsApi.Models.TeacherEvaluationAnswer", b =>

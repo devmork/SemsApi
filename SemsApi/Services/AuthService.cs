@@ -292,10 +292,16 @@ namespace SemsApi.Services
                 if (!created.Succeeded)
                     throw new RegistrationFailedException(created.Errors.Select(e => e.Description));
 
-                var role = await _userManager.AddToRoleAsync(user, "Student");
+                // Bootstrap admin: if no account holds the Admin role yet, the very
+                // first user to sign in becomes the Admin instead of a Student.
+                var initialRole = await HasAnyAdminAsync(_dbContext)
+                    ? "Student"
+                    : "Admin";
+
+                var role = await _userManager.AddToRoleAsync(user, initialRole);
                 if (!role.Succeeded)
                 {
-                    await _userManager.DeleteAsync(user); 
+                    await _userManager.DeleteAsync(user);
                     throw new RegistrationFailedException(role.Errors.Select(e => e.Description));
                 }
                 isNew = true;
@@ -316,7 +322,78 @@ namespace SemsApi.Services
                 await _userManager.UpdateAsync(user);
             }
 
+            // Ensure a Student profile exists for Student-role accounts so they can
+            // evaluate facilities even before DMC academic records are imported.
+            var roles = await _userManager.GetRolesAsync(user);
+            if (roles.Any(r => string.Equals(r, "Student", StringComparison.OrdinalIgnoreCase)))
+            {
+                var existingStudent = await _dbContext.Students
+                    .FirstOrDefaultAsync(s => s.UserId == user.Id);
+                if (existingStudent is null)
+                {
+                    var studentNumber = await GenerateStudentNumberAsync(_dbContext);
+                    _dbContext.Students.Add(new Student
+                    {
+                        UserId = user.Id,
+                        StudentNumber = studentNumber,
+                        GradeLevel = "N/A",
+                        Section = "N/A",
+                        SchoolYear = $"{DateTime.UtcNow.Year}-{DateTime.UtcNow.Year + 1}",
+                        Status = "Active",
+                        IsPlaceholder = true,
+                    });
+                    await _dbContext.SaveChangesAsync();
+                }
+            }
+
             return new GoogleSignInResponse(user, isNew);
+        }
+        /// <summary>
+        /// True when at least one account already holds the Admin role — i.e. the
+        /// bootstrap admin has been claimed and later sign-ups stay Students.
+        /// </summary>
+        private static async Task<bool> HasAnyAdminAsync(ApplicationDbContext context)
+        {
+            var adminRoleId = await context.Roles
+                .AsNoTracking()
+                .Where(r => r.NormalizedName == "ADMIN")
+                .Select(r => r.Id)
+                .FirstOrDefaultAsync();
+
+            if (adminRoleId == 0) return false;
+
+            return await context.UserRoles.AsNoTracking()
+                .AnyAsync(ur => ur.RoleId == adminRoleId);
+        }
+
+        private async Task<string> GenerateStudentNumberAsync(ApplicationDbContext context)
+        {
+            var year = DateTime.UtcNow.Year;
+            var prefix = $"{year}-";
+
+            for (var attempt = 0; attempt < 5; attempt++)
+            {
+                var last = await context.Students
+                    .AsNoTracking()
+                    .Where(s => s.StudentNumber.StartsWith(prefix))
+                    .OrderByDescending(s => s.StudentNumber)
+                    .Select(s => s.StudentNumber)
+                    .FirstOrDefaultAsync();
+
+                var next = 1;
+                if (last is not null && last.Length > prefix.Length &&
+                    int.TryParse(last.AsSpan(prefix.Length), out var parsed))
+                {
+                    next = parsed + 1;
+                }
+
+                var candidate = $"{prefix}{next:D4}";
+
+                var taken = await context.Students.AnyAsync(s => s.StudentNumber == candidate);
+                if (!taken) return candidate;
+            }
+
+            throw new InvalidOperationException("Could not generate a unique student number.");
         }
     }
 }

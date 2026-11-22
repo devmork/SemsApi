@@ -61,7 +61,6 @@ namespace SemsApi.Controllers
         /// Create a new EvaluationForm. CreatedBy is taken from the signed-in user's token, so a valid token is required.
         /// Drafts (IsActive = 0) can be created empty; active forms require every selected category to have questions.
         /// </summary>
-        [Authorize(Roles = "QA")]
         [HttpPost]
         public async Task<ActionResult> Create([FromBody] FormRequestDto request)
         {
@@ -76,7 +75,6 @@ namespace SemsApi.Controllers
         // UPDATE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "QA")]
         [HttpPut("{formId:int}")]
         public async Task<ActionResult> Update(int formId, [FromBody] FormRequestDto request)
         {
@@ -87,7 +85,6 @@ namespace SemsApi.Controllers
         // DELETE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "QA")]
         [HttpDelete("{formId:int}")]
         public async Task<ActionResult> Delete(int formId)
         {

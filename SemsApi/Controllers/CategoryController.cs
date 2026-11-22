@@ -11,7 +11,7 @@ namespace SemsApi.Controllers
     /// A category belongs to one evaluation type, and its CategoryId is unique across all evaluation types.
     /// </summary>
     [ApiController]
-    [Authorize(Roles = "QA,Admin")]
+    [Authorize]
     [Route("api/evaluation/categories")]
     public class CategoryController : ControllerBase
     {

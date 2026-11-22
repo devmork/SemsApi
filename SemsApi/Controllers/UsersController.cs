@@ -9,7 +9,7 @@ namespace SemsApi.Controllers
 {
     [ApiController]
     [Route("api/users")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public class UsersController(IUserService userService) : ControllerBase
     {
         [HttpGet]

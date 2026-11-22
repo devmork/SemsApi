@@ -111,19 +111,17 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "SEMS API", Version = "v1" });
 
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    options.AddSecurityDefinition("AccessTokenCookie", new OpenApiSecurityScheme
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Enter: Bearer {your JWT token}"
+        Name = "ACCESS_TOKEN",
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Cookie,
+        Description = "JWT issued at sign-in and stored in the ACCESS_TOKEN cookie."
     });
 
     options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
-        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+        [new OpenApiSecuritySchemeReference("AccessTokenCookie", document)] = []
     });
 });
 builder.Services.AddProblemDetails();
@@ -135,6 +133,9 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
     await RoleSeeder.SeedAsync(roleManager);
+
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await FacilitySeeder.SeedAsync(context);
 }
 
 if (app.Environment.IsDevelopment())
@@ -146,6 +147,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 app.UseExceptionHandler();
+app.UseStatusCodePages();
 app.UseHttpsRedirection();
 app.UseCors("CorsPolicy");
 app.UseAuthentication();

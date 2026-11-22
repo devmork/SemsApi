@@ -6,7 +6,7 @@ using SemsApi.Interfaces;
 namespace SemsApi.Controllers
 {
     [ApiController]
-    [Authorize(Roles = "QA,Admin")]
+    [Authorize]
     [Route("api/evaluation/types")]
     public class EvaluationTypeController : ControllerBase
     {

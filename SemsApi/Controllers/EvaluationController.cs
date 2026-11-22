@@ -11,6 +11,7 @@ using SemsApi.Utilities;
 namespace SemsApi.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/evaluation")]
     public class EvaluationController : ControllerBase
     {
@@ -25,7 +26,6 @@ namespace SemsApi.Controllers
         /// Get the categories and questions of an evaluation form.
         /// Example: /api/evaluation/form?formId=3
         /// </summary>
-        [Authorize(Roles = "QA,Admin")]
         [HttpGet("form")]
         public async Task<ActionResult<List<EvaluationCategoryDto>>> GetForm(
             [FromQuery] int formId)
@@ -76,7 +76,6 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Get form-scoped questions (optionally filtered by form and/or category).
         /// </summary>
-        [Authorize(Roles = "QA,Admin")]
         [HttpGet("questions")]
         public async Task<ActionResult> GetQuestions(
             [FromQuery] int? formId = null,
@@ -111,7 +110,6 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Submit Teacher Strength / Comment
         /// </summary>
-        [Authorize(Roles = "Student")]
         [HttpPost("teacher/strength")]
         public async Task<ActionResult> SubmitTeacherStrength([FromBody] SubmitTeacherStrengthRequest request, CancellationToken ct)
         {
@@ -181,7 +179,6 @@ namespace SemsApi.Controllers
         /// <summary>
         /// Get Teacher Strength comments
         /// </summary>
-        [Authorize(Roles = "QA,Admin")]
         [HttpGet("teacher/strengths")]
         public async Task<ActionResult> GetTeacherStrengths(
             [FromQuery] int? teacherId = null,

@@ -5,7 +5,7 @@ SEMS (School Evaluation Management System) backend — ASP.NET Core Web API on .
 ## Dev environment
 
 - Prerequisites: .NET 9 SDK (csproj targets `net9.0`; other SDK majors will not build it) and SQL Server per `appsettings.Development.json` `DefaultConnection` (current setup: SQLEXPRESS on a dev machine).
-- Startup seeds via `Seeders/` (Program.cs) — the app will not boot without a working DB connection: `RoleSeeder` (Admin/QA/Student roles), `AdminSeeder` (bootstrap admin account from `Seed:Admin`), `FacilitySeeder` (default facilities).
+- Startup seeds via `Seeders/` (Program.cs) — the app will not boot without a working DB connection: `RoleSeeder` (Admin/QA/Student roles), `FacilitySeeder` (default facilities).
 - Frontend dev origin for CORS: `https://localhost:5173` (`Frontend:BaseUrl` in dev settings).
 
 ## Build, run, test
