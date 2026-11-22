@@ -92,11 +92,37 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddCors(options =>
 {
-    var frontendUrl = builder.Configuration["Frontend:BaseUrl"]!.TrimEnd('/');
+    // Vite binds the IPv6 loopback on some machines, so both `localhost` and
+    // `[::1]` (http and https) occur in practice. `Frontend:AllowedOrigins`
+    // adds extra origins without code changes; anything not listed is rejected.
+    var origins = new List<string>();
+
+    var configured = builder.Configuration["Frontend:AllowedOrigins"];
+    if (!string.IsNullOrWhiteSpace(configured))
+    {
+        origins.AddRange(configured
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(o => o.Trim().TrimEnd('/')));
+    }
+
+    var primary = builder.Configuration["Frontend:BaseUrl"];
+    if (!string.IsNullOrWhiteSpace(primary))
+        origins.Add(primary.Trim().TrimEnd('/'));
+
+    if (builder.Environment.IsDevelopment())
+    {
+        origins.AddRange(new[]
+        {
+            "http://localhost:5173",
+            "https://localhost:5173",
+            "http://[::1]:5173",
+            "https://[::1]:5173",
+        });
+    }
 
     options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.WithOrigins(frontendUrl)
+        policy.WithOrigins(origins.Distinct(StringComparer.OrdinalIgnoreCase).ToArray())
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
