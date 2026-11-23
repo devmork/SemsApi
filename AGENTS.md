@@ -1,6 +1,6 @@
 # AGENTS.md — SemsApi
 
-SEMS (School Evaluation Management System) backend — ASP.NET Core Web API on .NET 9, EF Core + SQL Server, ASP.NET Identity, JWT auth (ACCESS_TOKEN cookie) + Google sign-in restricted to the dmc.edu.ph hosted domain. Single project in `SemsApi.sln`: `SemsApi/SemsApi.csproj`. Runtime depends on a reachable SQL Server (connection string in `appsettings.Development.json`, which is gitignored and holds secrets — never commit it or paste its values).
+SEMS (School Evaluation Management System) backend — ASP.NET Core Web API on .NET 10, EF Core + SQL Server, ASP.NET Identity, JWT bearer auth (`Authorization` header, tokens issued to the SPA after a one-time `?code=` exchange) + Google sign-in restricted to the dmc.edu.ph hosted domain. Single project in `SemsApi.sln`: `SemsApi/SemsApi.csproj`. Runtime depends on a reachable SQL Server (connection string in `appsettings.Development.json`, which is gitignored and holds secrets — never commit it or paste its values).
 
 ## Agent skills
 
@@ -40,7 +40,8 @@ Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents
 
 ## Pitfalls
 
-- JWT is sent via the `ACCESS_TOKEN` **cookie**, not the `Authorization` header — the Swagger "Bearer" scheme in Program.cs is misleading for testing.
+- JWT travels in the `Authorization: Bearer <token>` header. `/api/auth/refresh` and `/api/auth/logout` take `{ refreshToken }` in the request body — no auth cookies exist anymore. Swagger's Bearer scheme is accurate; paste an access token from `/api/auth/exchange` or `/api/auth/refresh`.
+- Production middleware: `UseForwardedHeaders()` before `UseHsts()`/`UseHttpsRedirection()`; Swagger is Development-only.
 - `[Authorize]` is commented out on several endpoints (e.g. `FacilitiesController` POST/PUT/DELETE) — auth is not enforced everywhere.
 - Google sign-in is locked to `hd = dmc.edu.ph` (Program.cs) — non-DMC accounts cannot sign in locally.
 - `SemsApi/appsettings.Development.json` (secrets) and `SemsApi/repomix-output.xml` (~500 KB generated dump) are gitignored but present in the working tree — do not edit or commit them.
