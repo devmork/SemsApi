@@ -2,6 +2,20 @@
 
 SEMS (School Evaluation Management System) backend — ASP.NET Core Web API on .NET 9, EF Core + SQL Server, ASP.NET Identity, JWT auth (ACCESS_TOKEN cookie) + Google sign-in restricted to the dmc.edu.ph hosted domain. Single project in `SemsApi.sln`: `SemsApi/SemsApi.csproj`. Runtime depends on a reachable SQL Server (connection string in `appsettings.Development.json`, which is gitignored and holds secrets — never commit it or paste its values).
 
+## Agent skills
+
+### Issue tracker
+
+GitHub issues on devmork/SemsApi (gh CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical triage labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 ## Dev environment
 
 - Prerequisites: .NET 9 SDK (csproj targets `net9.0`; other SDK majors will not build it) and SQL Server per `appsettings.Development.json` `DefaultConnection` (current setup: SQLEXPRESS on a dev machine).
