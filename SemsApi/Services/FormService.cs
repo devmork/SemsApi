@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.Evaluation;
@@ -10,7 +10,8 @@ using SemsApi.Utilities;
 namespace SemsApi.Services
 {
     /// <summary>
-    /// EvaluationForm CRUD. A EvaluationForm's categories and questions come from its EvaluationType.
+    /// EvaluationForm CRUD. Each form selects shared EvaluationCategories via
+    /// EvaluationFormCategory and owns its own questions via EvaluationFormQuestion.
     /// </summary>
     public class FormService : IFormService
     {
@@ -26,12 +27,9 @@ namespace SemsApi.Services
         // ---------------------------------------------------------------------
 
         public async Task<ActionResult<List<FormDto>>> GetAllAsync(
-            int? programId = null, int? evaluationTypeId = null, int? isActive = null, bool studentView = false)
+            int? evaluationTypeId = null, int? isActive = null, bool studentView = false)
         {
             var query = _context.Forms.AsNoTracking().AsQueryable();
-
-            if (programId.HasValue)
-                query = query.Where(f => f.ProgramId == programId.Value);
 
             if (evaluationTypeId.HasValue)
                 query = query.Where(f => f.EvaluationTypeId == evaluationTypeId.Value);
@@ -47,10 +45,6 @@ namespace SemsApi.Services
                 .Select(f => new FormDto
                 {
                     FormId = f.FormId,
-                    Code = f.Code,
-                    GradeBand = f.GradeBand,
-                    TargetType = f.TargetType,
-                    ProgramId = f.ProgramId,
                     EvaluationTypeId = f.EvaluationTypeId,
                     EvaluationTypeName = f.EvaluationType.EvaluationTypeName,
                     Title = f.Title,
@@ -74,28 +68,27 @@ namespace SemsApi.Services
             if (evaluationForm is null || (studentView && evaluationForm.IsActive != FormHelper.Active))
                 return new NotFoundObjectResult(new { message = "EvaluationForm not found." });
 
-            var categories = await _context.TeacherEvaluationCategories
+            var formCategories = await _context.EvaluationFormCategories
                 .AsNoTracking()
-                .Where(c => c.EvaluationTypeId == evaluationForm.EvaluationTypeId)
-                .OrderBy(c => c.CatNo)
+                .Include(fc => fc.EvaluationCategory)
+                .Where(fc => fc.FormId == formId && fc.IsActive)
+                .OrderBy(fc => fc.DisplayOrder)
+                .ThenBy(fc => fc.CategoryId)
                 .ToListAsync();
 
-            var catNos = categories.Select(c => c.CatNo).ToList();
+            var categoryIds = formCategories.Select(fc => fc.CategoryId).ToList();
 
-            var questions = await _context.EvaluationQuestions
+            var formQuestions = await _context.EvaluationFormQuestions
                 .AsNoTracking()
-                .Where(q => catNos.Contains(q.CatNo))
-                .OrderBy(q => q.CatNo)
-                .ThenBy(q => q.QnNo)
+                .Include(q => q.FormCategory)
+                .Where(q => categoryIds.Contains(q.FormCategory.CategoryId))
+                .OrderBy(q => q.FormCategory.DisplayOrder)
+                .ThenBy(q => q.DisplayOrder)
                 .ToListAsync();
 
             var detail = new FormDetailDto
             {
                 FormId = evaluationForm.FormId,
-                Code = evaluationForm.Code,
-                GradeBand = evaluationForm.GradeBand,
-                TargetType = evaluationForm.TargetType,
-                ProgramId = evaluationForm.ProgramId,
                 EvaluationTypeId = evaluationForm.EvaluationTypeId,
                 EvaluationTypeName = evaluationForm.EvaluationType.EvaluationTypeName,
                 Title = evaluationForm.Title,
@@ -103,18 +96,17 @@ namespace SemsApi.Services
                 CreatedBy = evaluationForm.CreatedBy,
                 IsActive = evaluationForm.IsActive,
                 CreatedAt = evaluationForm.CreatedAt,
-                Categories = categories.Select(c => new EvaluationCategoryDto
+                Categories = formCategories.Select(fc => new EvaluationCategoryDto
                 {
-                    CatNo = c.CatNo,
-                    CatRn = c.CatRn,
-                    CatName = c.CatName,
-                    CatRate = c.CatRate,
-                    Questions = questions
-                        .Where(q => q.CatNo == c.CatNo)
+                    CategoryId = fc.CategoryId,
+                    CategoryName = fc.EvaluationCategory?.CategoryName,
+                    CategoryRate = fc.EvaluationCategory?.CategoryRate,
+                    Questions = formQuestions
+                        .Where(q => q.FormCategory.CategoryId == fc.CategoryId)
                         .Select(q => new EvaluationQuestionDto
                         {
-                            QnNo = q.QnNo,
-                            QnName = q.QnName
+                            QuestionId = q.FormQuestionId,
+                            QuestionName = q.QuestionName
                         })
                         .ToList()
                 }).ToList()
@@ -128,7 +120,8 @@ namespace SemsApi.Services
         // ---------------------------------------------------------------------
 
         /// <summary>
-        /// The evaluation type must have at least one category, and every category must have at least one question.
+        /// A draft form (IsActive = 0) may be created without categories/questions so they can be
+        /// authored afterwards. Completeness is enforced only when the form is active.
         /// </summary>
         public async Task<ActionResult> CreateAsync(FormRequestDto request, int createdBy)
         {
@@ -145,26 +138,13 @@ namespace SemsApi.Services
             if (evaluationType is null)
                 return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
-            var incompleteError = await GetIncompleteFormErrorAsync(evaluationTypeId);
-            if (incompleteError is not null)
-                return new BadRequestObjectResult(new { message = incompleteError });
-
-            var normalizedCode = FormHelper.NormalizeCode(request.Code!);
-
-            var codeExists = await _context.Forms.AnyAsync(f => f.Code == normalizedCode);
-            if (codeExists)
-                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
-
             var entity = new EvaluationForm
             {
-                Code = normalizedCode,
-                GradeBand = string.IsNullOrWhiteSpace(request.GradeBand) ? null : request.GradeBand.Trim(),
-                TargetType = FormHelper.NormalizeTargetType(request.TargetType),
-                ProgramId = request.ProgramId!.Value,
                 EvaluationTypeId = evaluationTypeId,
                 Title = request.Title!.Trim(),
                 Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
                 CreatedBy = createdBy,
+                // Null on create keeps the historical behaviour of defaulting to active.
                 IsActive = request.IsActive ?? FormHelper.Active,
                 CreatedAt = DateTime.UtcNow
             };
@@ -174,33 +154,32 @@ namespace SemsApi.Services
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateException ex) when (DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            catch (DbUpdateException)
             {
-                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
+                return new ConflictObjectResult(new { message = "Unable to create the evaluation form." });
+            }
+
+            // Only active forms must be complete. Drafts can be filled in later.
+            if (entity.IsActive == FormHelper.Active)
+            {
+                var incompleteError = await GetIncompleteFormErrorAsync(entity.FormId);
+                if (incompleteError is not null)
+                {
+                    _context.Forms.Remove(entity);
+                    await _context.SaveChangesAsync();
+                    return new BadRequestObjectResult(new { message = incompleteError });
+                }
             }
 
             return new CreatedResult(
                 $"/api/evaluation/forms/{entity.FormId}",
                 new
                 {
-                    message = "EvaluationForm created successfully.",
+                    message = entity.IsActive == FormHelper.Active
+                        ? "EvaluationForm created successfully."
+                        : "EvaluationForm created successfully (draft).",
                     data = FormHelper.MapToDto(entity, evaluationType.EvaluationTypeName)
                 });
-        }
-
-        public async Task<ActionResult<FormDto>> GetByCodeAsync(string code, bool studentView = false)
-        {
-            var normalizedCode = FormHelper.NormalizeCode(code);
-
-            var evaluationForm = await _context.Forms
-                .AsNoTracking()
-                .Include(f => f.EvaluationType)
-                .FirstOrDefaultAsync(f => f.Code == normalizedCode);
-
-            if (evaluationForm is null || (studentView && evaluationForm.IsActive != FormHelper.Active))
-                return new NotFoundObjectResult(new { message = "EvaluationForm not found." });
-
-            return new OkObjectResult(FormHelper.MapToDto(evaluationForm, evaluationForm.EvaluationType.EvaluationTypeName));
         }
 
         // ---------------------------------------------------------------------
@@ -232,25 +211,14 @@ namespace SemsApi.Services
 
             var willBeActive = (request.IsActive ?? evaluationForm.IsActive) == FormHelper.Active;
 
-            // Re-check completeness when the EvaluationForm switches evaluation type or is/will be active.
-            if (evaluationTypeId != evaluationForm.EvaluationTypeId || willBeActive)
+            // Only active forms must be complete; drafts may still be missing questions.
+            if (willBeActive)
             {
-                var incompleteError = await GetIncompleteFormErrorAsync(evaluationTypeId);
+                var incompleteError = await GetIncompleteFormErrorAsync(formId);
                 if (incompleteError is not null)
                     return new BadRequestObjectResult(new { message = incompleteError });
             }
 
-            var normalizedCode = FormHelper.NormalizeCode(request.Code!);
-
-            var codeExists = await _context.Forms
-                .AnyAsync(f => f.Code == normalizedCode && f.FormId != formId);
-            if (codeExists)
-                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
-
-            evaluationForm.Code = normalizedCode;
-            evaluationForm.GradeBand = string.IsNullOrWhiteSpace(request.GradeBand) ? null : request.GradeBand.Trim();
-            evaluationForm.TargetType = FormHelper.NormalizeTargetType(request.TargetType);
-            evaluationForm.ProgramId = request.ProgramId!.Value;
             evaluationForm.EvaluationTypeId = evaluationTypeId;
             evaluationForm.Title = request.Title!.Trim();
             evaluationForm.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
@@ -262,9 +230,9 @@ namespace SemsApi.Services
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateException ex) when (DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
+            catch (DbUpdateException)
             {
-                return new ConflictObjectResult(new { message = "A form with this Code already exists." });
+                return new ConflictObjectResult(new { message = "Unable to update the evaluation form." });
             }
 
             return new OkObjectResult(new
@@ -294,6 +262,25 @@ namespace SemsApi.Services
             if (await _context.FacilityEvaluationSubmissions.AnyAsync(s => s.FormId == formId))
                 return new ConflictObjectResult(new { message = "Cannot delete: form has facility evaluation submissions." });
 
+            // Remove the form's own categories and questions first (FKs are Restrict).
+            var formCategoryIds = await _context.EvaluationFormCategories
+                .Where(fc => fc.FormId == formId)
+                .Select(fc => fc.FormCategoryId)
+                .ToListAsync();
+
+            if (formCategoryIds.Count > 0)
+            {
+                var questionsToDelete = await _context.EvaluationFormQuestions
+                    .Where(q => formCategoryIds.Contains(q.FormCategoryId))
+                    .ToListAsync();
+
+                _context.EvaluationFormQuestions.RemoveRange(questionsToDelete);
+                _context.EvaluationFormCategories.RemoveRange(
+                    await _context.EvaluationFormCategories
+                        .Where(fc => formCategoryIds.Contains(fc.FormCategoryId))
+                        .ToListAsync());
+            }
+
             _context.Forms.Remove(evaluationForm);
             await _context.SaveChangesAsync();
 
@@ -305,33 +292,39 @@ namespace SemsApi.Services
         // ---------------------------------------------------------------------
 
         /// <summary>
-        /// A EvaluationForm needs at least one category for its evaluation type, and every category needs at least one question.
-        /// Returns an error message, or null when the evaluation type is complete.
+        /// A EvaluationForm is complete when every active selected category on that form
+        /// has at least one form-scoped question.
+        /// Returns an error message, or null when complete.
         /// </summary>
-        private async Task<string?> GetIncompleteFormErrorAsync(int evaluationTypeId)
+        private async Task<string?> GetIncompleteFormErrorAsync(int formId)
         {
-            var categoryNos = await _context.TeacherEvaluationCategories
+            var activeCategoryIds = await _context.EvaluationFormCategories
                 .AsNoTracking()
-                .Where(c => c.EvaluationTypeId == evaluationTypeId)
-                .Select(c => c.CatNo)
+                .Where(fc => fc.FormId == formId && fc.IsActive)
+                .Select(fc => fc.CategoryId)
                 .ToListAsync();
 
-            if (categoryNos.Count == 0)
-                return "This evaluation type has no categories yet. Create its categories and questions first.";
+            if (activeCategoryIds.Count == 0)
+                return "This form has no categories selected. Add categories and questions first.";
 
-            var categoriesWithQuestions = await _context.EvaluationQuestions
+            var categoriesWithQuestions = await _context.EvaluationFormQuestions
                 .AsNoTracking()
-                .Where(q => categoryNos.Contains(q.CatNo))
-                .Select(q => q.CatNo)
+                .Join(
+                    _context.EvaluationFormCategories.AsNoTracking(),
+                    q => q.FormCategoryId,
+                    fc => fc.FormCategoryId,
+                    (q, fc) => new { q.FormCategoryId, fc.CategoryId, fc.FormId, fc.IsActive })
+                .Where(x => x.FormId == formId && x.IsActive)
+                .Select(x => x.CategoryId)
                 .Distinct()
                 .ToListAsync();
 
-            var missing = categoryNos
+            var missing = activeCategoryIds
                 .Except(categoriesWithQuestions)
                 .ToList();
 
             if (missing.Count > 0)
-                return $"Every category needs at least one question. Categories without questions (CatNo): {string.Join(", ", missing)}.";
+                return $"Every selected category needs at least one question. Categories without questions (CategoryId): {string.Join(", ", missing)}.";
 
             return null;
         }

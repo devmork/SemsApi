@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
 using SemsApi.DTO.EvaluationAssignments;
@@ -81,21 +81,20 @@ namespace SemsApi.Services
                         (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
                         (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now) &&
                         s.EvaluationForm.IsActive == 1 &&
-                        s.EvaluationForm.TargetType == "SubjectTeacher")
+                        !s.EvaluationForm.EvaluationType.IsFacility)
                     .ToListAsync(ct);
 
                 foreach (var key in pendingRows
                              .Select(o => (o.GradeLevel, o.SchoolYear, o.Term))
                              .Distinct())
                 {
-                    var programId = GradeLevelToProgramId(key.GradeLevel);
                     openSessionMap[key] = candidateSessions
                         .Where(s =>
                             s.SchoolYear == key.SchoolYear &&
                             s.Term == key.Term &&
-                            (s.EvaluationForm.ProgramId == programId || s.EvaluationForm.ProgramId == 0))
-                        .OrderBy(s => s.EvaluationForm.ProgramId == programId ? 0 : 1)
-                        .ThenByDescending(s => s.CreatedAtUtc)
+                            (!s.GradeLevelFrom.HasValue || s.GradeLevelFrom.Value <= key.GradeLevel) &&
+                            (!s.GradeLevelTo.HasValue || s.GradeLevelTo.Value >= key.GradeLevel))
+                        .OrderByDescending(s => s.CreatedAtUtc)
                         .FirstOrDefault();
                 }
             }
@@ -224,12 +223,13 @@ namespace SemsApi.Services
                 // Validate the client-supplied FormId before attempting to resolve a session.
                 var suppliedForm = await _context.Forms
                     .AsNoTracking()
+                    .Include(f => f.EvaluationType)
                     .FirstOrDefaultAsync(f => f.FormId == request.FormId.Value, ct);
 
                 if (suppliedForm is null)
                     return new BadRequestObjectResult(new { message = "Evaluation form not found." });
 
-                if (!string.Equals(suppliedForm.TargetType, "SubjectTeacher", StringComparison.Ordinal))
+                if (FormHelper.IsFacilityEvaluation(suppliedForm.EvaluationType))
                     return new BadRequestObjectResult(new { message = "The form is not for subject teacher evaluation." });
 
                 if (suppliedForm.EvaluationTypeId != request.EvaluationTypeId)
@@ -252,6 +252,15 @@ namespace SemsApi.Services
             if (session is null)
                 return new BadRequestObjectResult(new { message = "No open evaluation session exists for this submission." });
 
+            if ((session.GradeLevelFrom.HasValue && offering.GradeLevel < session.GradeLevelFrom.Value) ||
+                (session.GradeLevelTo.HasValue && offering.GradeLevel > session.GradeLevelTo.Value))
+            {
+                return new BadRequestObjectResult(new
+                {
+                    message = "This evaluation session is not open for the offering's grade level."
+                });
+            }
+
             if (request.EvaluationTypeId != session.EvaluationForm.EvaluationTypeId)
             {
                 return new BadRequestObjectResult(new
@@ -267,27 +276,28 @@ namespace SemsApi.Services
             if (request.Answers.Any(a => a.RateVal < 0 || a.RateVal > 5))
                 return new BadRequestObjectResult(new { message = "RateVal must be between 0 and 5." });
 
-            if (request.Answers.Any(a => a.CatNo <= 0 || a.QnNo <= 0))
-                return new BadRequestObjectResult(new { message = "CatNo and QnNo must be positive integers." });
+            if (request.Answers.Any(a => a.CategoryId <= 0 || a.QuestionId <= 0))
+                return new BadRequestObjectResult(new { message = "CategoryId and QuestionId must be positive integers." });
 
-            if (request.Answers.Select(a => a.QnNo).Distinct().Count() != request.Answers.Count)
+            if (request.Answers.Select(a => a.QuestionId).Distinct().Count() != request.Answers.Count)
                 return new BadRequestObjectResult(new { message = "Duplicate question IDs are not allowed." });
 
-            var qnNos = request.Answers.Select(a => a.QnNo).Distinct().ToList();
-            var validQuestions = await _context.EvaluationQuestions.AsNoTracking()
-                .Where(q => qnNos.Contains(q.QnNo))
-                .Select(q => new { q.QnNo, q.CatNo, q.Category.EvaluationTypeId })
+            var questionIds = request.Answers.Select(a => a.QuestionId).Distinct().ToList();
+            var validQuestions = await _context.EvaluationFormQuestions.AsNoTracking()
+                .Join(
+                    _context.EvaluationFormCategories.AsNoTracking(),
+                    q => q.FormCategoryId,
+                    fc => fc.FormCategoryId,
+                    (q, fc) => new { q.FormQuestionId, fc.CategoryId, fc.FormId })
+                .Where(x => questionIds.Contains(x.FormQuestionId) && x.FormId == session.FormId)
                 .ToListAsync(ct);
 
-            if (validQuestions.Count != qnNos.Count)
+            if (validQuestions.Count != questionIds.Count)
                 return new BadRequestObjectResult(new { message = "One or more question ids are invalid." });
 
-            if (validQuestions.Any(q => q.EvaluationTypeId != request.EvaluationTypeId))
-                return new BadRequestObjectResult(new { message = "One or more questions do not belong to the selected evaluation type." });
-
-            var questionMap = validQuestions.ToDictionary(q => q.QnNo);
-            if (request.Answers.Any(a => !questionMap.TryGetValue(a.QnNo, out var q) || q.CatNo != a.CatNo))
-                return new BadRequestObjectResult(new { message = "One or more answers have a CatNo that does not match the question." });
+            var questionMap = validQuestions.ToDictionary(q => q.FormQuestionId);
+            if (request.Answers.Any(a => !questionMap.TryGetValue(a.QuestionId, out var q) || q.CategoryId != a.CategoryId))
+                return new BadRequestObjectResult(new { message = "One or more answers have a CategoryId that does not match the question." });
 
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
             try
@@ -309,8 +319,8 @@ namespace SemsApi.Services
                 {
                     submission.Answers.Add(new TeacherEvaluationAnswer
                     {
-                        CatNo = a.CatNo,
-                        QnNo = a.QnNo,
+                        CategoryId = a.CategoryId,
+                        QuestionId = a.QuestionId,
                         RateVal = a.RateVal
                     });
                 }
@@ -364,24 +374,14 @@ namespace SemsApi.Services
                 .FirstOrDefaultAsync(ct);
         }
 
-        private static int GradeLevelToProgramId(int gradeLevel) => gradeLevel switch
-        {
-            >= 0 and <= 5 => 1,
-            >= 6 and <= 8 => 2,
-            _ => 3
-        };
-
         private async Task<(int? FormId, int? EvaluationTypeId)> ResolveFallbackFormAsync(int gradeLevel, CancellationToken ct)
         {
-            var programId = GradeLevelToProgramId(gradeLevel);
-
             var form = await _context.Forms
                 .AsNoTracking()
+                .Include(f => f.EvaluationType)
                 .Where(f => f.IsActive == 1
-                         && f.TargetType == "SubjectTeacher"
-                         && (f.ProgramId == programId || f.ProgramId == 0))
-                .OrderBy(f => f.ProgramId == programId ? 0 : 1)
-                .ThenByDescending(f => f.CreatedAt)
+                         && !f.EvaluationType.IsFacility)
+                .OrderByDescending(f => f.CreatedAt)
                 .Select(f => new { f.FormId, f.EvaluationTypeId })
                 .FirstOrDefaultAsync(ct);
 

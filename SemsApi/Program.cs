@@ -92,11 +92,37 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddCors(options =>
 {
-    var frontendUrl = builder.Configuration["Frontend:BaseUrl"]!.TrimEnd('/');
+    // Vite binds the IPv6 loopback on some machines, so both `localhost` and
+    // `[::1]` (http and https) occur in practice. `Frontend:AllowedOrigins`
+    // adds extra origins without code changes; anything not listed is rejected.
+    var origins = new List<string>();
+
+    var configured = builder.Configuration["Frontend:AllowedOrigins"];
+    if (!string.IsNullOrWhiteSpace(configured))
+    {
+        origins.AddRange(configured
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(o => o.Trim().TrimEnd('/')));
+    }
+
+    var primary = builder.Configuration["Frontend:BaseUrl"];
+    if (!string.IsNullOrWhiteSpace(primary))
+        origins.Add(primary.Trim().TrimEnd('/'));
+
+    if (builder.Environment.IsDevelopment())
+    {
+        origins.AddRange(new[]
+        {
+            "http://localhost:5173",
+            "https://localhost:5173",
+            "http://[::1]:5173",
+            "https://[::1]:5173",
+        });
+    }
 
     options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.WithOrigins(frontendUrl)
+        policy.WithOrigins(origins.Distinct(StringComparer.OrdinalIgnoreCase).ToArray())
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -111,19 +137,17 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "SEMS API", Version = "v1" });
 
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    options.AddSecurityDefinition("AccessTokenCookie", new OpenApiSecurityScheme
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Enter: Bearer {your JWT token}"
+        Name = "ACCESS_TOKEN",
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Cookie,
+        Description = "JWT issued at sign-in and stored in the ACCESS_TOKEN cookie."
     });
 
     options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
-        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+        [new OpenApiSecuritySchemeReference("AccessTokenCookie", document)] = []
     });
 });
 builder.Services.AddProblemDetails();
@@ -135,6 +159,9 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
     await RoleSeeder.SeedAsync(roleManager);
+
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await FacilitySeeder.SeedAsync(context);
 }
 
 if (app.Environment.IsDevelopment())
@@ -146,6 +173,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 app.UseExceptionHandler();
+app.UseStatusCodePages();
 app.UseHttpsRedirection();
 app.UseCors("CorsPolicy");
 app.UseAuthentication();

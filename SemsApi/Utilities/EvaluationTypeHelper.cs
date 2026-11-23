@@ -14,7 +14,8 @@ namespace SemsApi.Utilities
             new()
             {
                 EvaluationTypeId = e.EvaluationTypeId,
-                EvaluationTypeName = e.EvaluationTypeName
+                EvaluationTypeName = e.EvaluationTypeName,
+                IsFacility = e.IsFacility
             };
 
         public static string? Validate(EvaluationTypeRequestDto request)

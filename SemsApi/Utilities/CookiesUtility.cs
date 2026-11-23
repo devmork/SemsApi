@@ -25,7 +25,7 @@ namespace SemsApi.Utilities
         {
             HttpOnly = true,                 // JS can never read it
             Secure = true,                   // HTTPS only
-            SameSite = SameSiteMode.Lax,     // blocks cross-site POSTs, allows the Google redirect back
+            SameSite = SameSiteMode.None,
             Path = path,
             IsEssential = true,
             Expires = expiresUtc is null ? null : new DateTimeOffset(expiresUtc.Value)

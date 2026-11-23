@@ -32,17 +32,16 @@ namespace SemsApi.Controllers
         // ---------------------------------------------------------------------
 
         /// <summary>
-        /// List forms. Optionally filter by programId, evaluationTypeId and/or isActive (1 or 0).
+        /// List forms. Optionally filter by evaluationTypeId and/or isActive (1 or 0).
         /// Newest first. Students only ever receive active forms.
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<List<FormDto>>> GetAll(
-            [FromQuery] int? programId = null,
             [FromQuery] int? evaluationTypeId = null,
             [FromQuery] int? isActive = null)
         {
             return await _service.GetAllAsync(
-                programId, evaluationTypeId, isActive, studentView: User.IsInRole("Student"));
+                evaluationTypeId, isActive, studentView: User.IsInRole("Student"));
         }
 
         /// <summary>
@@ -60,9 +59,8 @@ namespace SemsApi.Controllers
 
         /// <summary>
         /// Create a new EvaluationForm. CreatedBy is taken from the signed-in user's token, so a valid token is required.
-        /// The evaluation type must have at least one category, and every category must have at least one question.
+        /// Drafts (IsActive = 0) can be created empty; active forms require every selected category to have questions.
         /// </summary>
-        [Authorize(Roles = "QA")]
         [HttpPost]
         public async Task<ActionResult> Create([FromBody] FormRequestDto request)
         {
@@ -77,7 +75,6 @@ namespace SemsApi.Controllers
         // UPDATE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "QA")]
         [HttpPut("{formId:int}")]
         public async Task<ActionResult> Update(int formId, [FromBody] FormRequestDto request)
         {
@@ -88,20 +85,10 @@ namespace SemsApi.Controllers
         // DELETE
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "QA")]
         [HttpDelete("{formId:int}")]
         public async Task<ActionResult> Delete(int formId)
         {
             return await _service.DeleteAsync(formId);
-        }
-
-        /// <summary>
-        /// Get a single EvaluationForm by its Code (e.g. PRE-G3, CAFETERIA, LIBRARY).
-        /// </summary>
-        [HttpGet("by-code/{code}")]
-        public async Task<ActionResult<FormDto>> GetByCode(string code)
-        {
-            return await _service.GetByCodeAsync(code, studentView: User.IsInRole("Student"));
         }
     }
 }

@@ -19,11 +19,10 @@ namespace SemsApi.Utilities
         public static CategoryResponseDto MapToResponse(EvaluationCategory c) =>
             new()
             {
-                CatNo = c.CatNo,
+                CategoryId = c.CategoryId,
                 EvaluationTypeId = c.EvaluationTypeId,
-                CatRn = c.CatRn,
-                CatName = c.CatName,
-                CatRate = c.CatRate
+                CategoryName = c.CategoryName,
+                CategoryRate = c.CategoryRate
             };
 
         /// <summary>
@@ -40,22 +39,18 @@ namespace SemsApi.Utilities
             if (request.EvaluationTypeId.Value <= 0)
                 return "EvaluationTypeId must be a positive number.";
 
-            if (string.IsNullOrWhiteSpace(request.CatRn))
-                return "CatRn is required.";
-            if (request.CatRn.Trim().Length > 10)
-                return "CatRn must not exceed 10 characters.";
 
-            if (string.IsNullOrWhiteSpace(request.CatName))
-                return "CatName is required.";
-            if (request.CatName.Trim().Length > 150)
-                return "CatName must not exceed 150 characters.";
+            if (string.IsNullOrWhiteSpace(request.CategoryName))
+                return "CategoryName is required.";
+            if (request.CategoryName.Trim().Length > 150)
+                return "CategoryName must not exceed 150 characters.";
 
-            if (!request.CatRate.HasValue)
-                return "CatRate is required.";
-            if (request.CatRate.Value < 0)
-                return "CatRate must not be negative.";
-            if (request.CatRate.Value > MaxCatRate)
-                return $"CatRate must not exceed {MaxCatRate}.";
+            if (!request.CategoryRate.HasValue)
+                return "CategoryRate is required.";
+            if (request.CategoryRate.Value < 0)
+                return "CategoryRate must not be negative.";
+            if (request.CategoryRate.Value > MaxCatRate)
+                return $"CategoryRate must not exceed {MaxCatRate}.";
 
             return null;
         }

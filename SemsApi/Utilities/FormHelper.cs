@@ -1,33 +1,29 @@
 using SemsApi.DTO.Form;
+using SemsApi.Models;
 using SemsApi.Models.Eval;
 
 namespace SemsApi.Utilities
 {
     public static class FormHelper
     {
-        public const int MaxCodeLength = 20;
-        public const int MaxGradeBandLength = 30;
-        public const int MaxTargetTypeLength = 30;
         public const int MaxTitleLength = 200;
         public const int MaxDescriptionLength = 1000;
-
-        public const int MinProgramId = 0;
-        public const int MaxProgramId = 3;
 
         public const int Inactive = 0;
         public const int Active = 1;
 
-        public const string DefaultTargetType = "SubjectTeacher";
-        public static readonly string[] AllowedTargetTypes = { "SubjectTeacher", "Facility" };
+        /// <summary>
+        /// True when the evaluation type is flagged as a facility/service evaluation
+        /// (Clinic, Canteen, ...). Detection is a database flag, not a name match, so
+        /// renaming an evaluation type cannot silently break the facility flow.
+        /// </summary>
+        public static bool IsFacilityEvaluation(EvaluationType? evaluationType) =>
+            evaluationType?.IsFacility == true;
 
         public static FormDto MapToDto(EvaluationForm f, string evaluationTypeName) =>
             new()
             {
                 FormId = f.FormId,
-                Code = f.Code,
-                GradeBand = f.GradeBand,
-                TargetType = f.TargetType,
-                ProgramId = f.ProgramId,
                 EvaluationTypeId = f.EvaluationTypeId,
                 EvaluationTypeName = evaluationTypeName,
                 Title = f.Title,
@@ -41,23 +37,6 @@ namespace SemsApi.Utilities
         {
             if (request is null)
                 return "Request body is required.";
-
-            if (string.IsNullOrWhiteSpace(request.Code))
-                return "Code is required.";
-            if (request.Code.Trim().Length > MaxCodeLength)
-                return $"Code must not exceed {MaxCodeLength} characters.";
-
-            if (request.GradeBand is not null && request.GradeBand.Trim().Length > MaxGradeBandLength)
-                return $"GradeBand must not exceed {MaxGradeBandLength} characters.";
-
-            if (!string.IsNullOrWhiteSpace(request.TargetType) &&
-                !AllowedTargetTypes.Contains(request.TargetType.Trim(), StringComparer.OrdinalIgnoreCase))
-                return "TargetType must be either 'SubjectTeacher' or 'Facility'.";
-
-            if (!request.ProgramId.HasValue)
-                return "ProgramId is required.";
-            if (request.ProgramId.Value < MinProgramId || request.ProgramId.Value > MaxProgramId)
-                return "ProgramId must be 0 (all students), 1 (Preschool to Grade 3), 2 (Grade 4 to 6) or 3 (JHS to SHS).";
 
             if (!request.EvaluationTypeId.HasValue)
                 return "EvaluationTypeId is required.";
@@ -78,20 +57,6 @@ namespace SemsApi.Utilities
                 return "IsActive must be 0 or 1.";
 
             return null;
-        }
-
-        public static string NormalizeCode(string code) => code.Trim().ToUpper();
-
-        public static string NormalizeTargetType(string? targetType)
-        {
-            if (string.IsNullOrWhiteSpace(targetType))
-                return DefaultTargetType;
-
-            var trimmed = targetType.Trim();
-            var match = AllowedTargetTypes
-                .FirstOrDefault(t => string.Equals(t, trimmed, StringComparison.OrdinalIgnoreCase));
-
-            return match ?? DefaultTargetType;
         }
     }
 }

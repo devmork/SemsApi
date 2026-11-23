@@ -31,8 +31,6 @@ namespace SemsApi.Services
                 {
                     FacilityId = f.FacilityId,
                     FacilityName = f.FacilityName,
-                    Description = f.Description,
-                    Location = f.Location,
                     IsActive = f.IsActive,
                     CreatedAt = f.CreatedAt,
                     UpdatedAt = f.UpdatedAt,
@@ -51,8 +49,6 @@ namespace SemsApi.Services
                 {
                     FacilityId = f.FacilityId,
                     FacilityName = f.FacilityName,
-                    Description = f.Description,
-                    Location = f.Location,
                     IsActive = f.IsActive,
                     CreatedAt = f.CreatedAt,
                     UpdatedAt = f.UpdatedAt,
@@ -80,8 +76,6 @@ namespace SemsApi.Services
             var entity = new Facility
             {
                 FacilityName = name,
-                Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
-                Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -111,8 +105,6 @@ namespace SemsApi.Services
                 return new ConflictObjectResult(new { message = "A facility with this name already exists." });
 
             entity.FacilityName = name;
-            entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
-            entity.Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim();
             if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
             entity.UpdatedAt = DateTime.UtcNow;
 

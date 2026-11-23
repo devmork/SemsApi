@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SemsApi.Data;
 using SemsApi.DTO.Facility;
 using SemsApi.Interfaces;
 using SemsApi.Utilities;
@@ -12,8 +14,12 @@ namespace SemsApi.Controllers
     public class FacilityEvaluationAssignmentsController : ControllerBase
     {
         private readonly IFacilityEvaluationService _service;
-        public FacilityEvaluationAssignmentsController(IFacilityEvaluationService service)
-            => _service = service;
+        private readonly ApplicationDbContext _context;
+        public FacilityEvaluationAssignmentsController(IFacilityEvaluationService service, ApplicationDbContext context)
+        {
+            _service = service;
+            _context = context;
+        }
 
         [HttpGet("me")]
         public async Task<ActionResult<List<FacilityEvaluationAssignmentDto>>> GetMine(
@@ -56,6 +62,23 @@ namespace SemsApi.Controllers
             var userId = UserContextResolver.GetUserId(HttpContext);
             if (userId is null) return Unauthorized();
             return await _service.SubmitAsync(userId.Value, request, ct);
+        }
+
+        [HttpDelete("{submissionId:int}")]
+        public async Task<ActionResult> DeleteSubmission(
+            int submissionId,
+            CancellationToken ct = default)
+        {
+            var submission = await _context.FacilityEvaluationSubmissions
+                .Include(s => s.Answers)
+                .FirstOrDefaultAsync(s => s.SubmissionId == submissionId, ct);
+            if (submission is null)
+                return NotFound(new { message = "Submission not found." });
+
+            _context.FacilityEvaluationAnswers.RemoveRange(submission.Answers);
+            _context.FacilityEvaluationSubmissions.Remove(submission);
+            await _context.SaveChangesAsync(ct);
+            return NoContent();
         }
     }
 }

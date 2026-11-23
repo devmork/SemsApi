@@ -54,7 +54,6 @@ namespace SemsApi.Controllers
             }
         }
 
-        [Authorize]
         [HttpGet("me")]
         public async Task<IActionResult> Me(CancellationToken ct)
         {

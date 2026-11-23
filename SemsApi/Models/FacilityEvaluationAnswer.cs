@@ -1,13 +1,19 @@
 namespace SemsApi.Models
 {
+    using SemsApi.Models.Eval;
+
     public class FacilityEvaluationAnswer
     {
         public int AnswerId { get; set; }
         public int SubmissionId { get; set; }
         public FacilityEvaluationSubmission Submission { get; set; } = null!;
 
-        public int CatNo { get; set; }
-        public int QnNo { get; set; }
+        public int CategoryId { get; set; }
+
+        /// <summary>FK to EvaluationFormQuestion.FormQuestionId</summary>
+        public int QuestionId { get; set; }
+        public EvaluationFormQuestion Question { get; set; } = null!;
+
         public int RateVal { get; set; }
     }
 }

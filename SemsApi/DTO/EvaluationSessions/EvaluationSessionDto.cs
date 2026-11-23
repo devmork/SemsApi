@@ -5,17 +5,16 @@ namespace SemsApi.DTO.EvaluationSessions
         public int EvaluationSessionId { get; set; }
 
         public int FormId { get; set; }
-        public string FormCode { get; set; } = string.Empty;
         public string FormTitle { get; set; } = string.Empty;
 
         public int EvaluationTypeId { get; set; }
         public string EvaluationTypeName { get; set; } = string.Empty;
 
-        public string TargetType { get; set; } = string.Empty;
-        public int ProgramId { get; set; }
-
         public string SchoolYear { get; set; } = string.Empty;
         public int Term { get; set; }
+
+        public int? GradeLevelFrom { get; set; }
+        public int? GradeLevelTo { get; set; }
 
         public DateTime? OpensAtUtc { get; set; }
         public DateTime? ClosesAtUtc { get; set; }

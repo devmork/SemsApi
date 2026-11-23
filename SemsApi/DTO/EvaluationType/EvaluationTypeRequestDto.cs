@@ -7,5 +7,8 @@ namespace SemsApi.DTO.EvaluationType
     public class EvaluationTypeRequestDto
     {
         public string? EvaluationTypeName { get; set; }
+
+        /// <summary>When omitted on update, the existing flag is kept.</summary>
+        public bool? IsFacility { get; set; }
     }
 }

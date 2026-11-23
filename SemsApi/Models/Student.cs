@@ -13,6 +13,12 @@ namespace SemsApi.Models
         public string SchoolYear { get; set; } = string.Empty;
         public string Status { get; set; } = "Active";
 
+        /// <summary>
+        /// True when the Student row was auto-created from sign-in (no DMC academic
+        /// record yet). Replaced by real data once the DMC API sync runs.
+        /// </summary>
+        public bool IsPlaceholder { get; set; } = true;
+
         public ICollection<StudentSubjectEnrollment> SubjectEnrollments { get; set; } = new List<StudentSubjectEnrollment>();
         public ICollection<StudentTermEnrollment> TermEnrollments { get; set; } = new List<StudentTermEnrollment>();
         public ICollection<TeacherEvaluationSubmission> EvaluationSubmissions { get; set; } = new List<TeacherEvaluationSubmission>();

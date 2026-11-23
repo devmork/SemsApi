@@ -10,7 +10,7 @@ using SemsApi.Utilities;
 namespace SemsApi.Services
 {
     /// <summary>
-    /// Category CRUD. A category belongs to one EvaluationType, and its CatNo is unique across all evaluation types.
+    /// Category CRUD. A category belongs to one EvaluationType, and its CategoryId is unique across all evaluation types.
     /// </summary>
     public class CategoryService : ICategoryService
     {
@@ -33,25 +33,24 @@ namespace SemsApi.Services
                 query = query.Where(c => c.EvaluationTypeId == evaluationTypeId.Value);
 
             var data = await query
-                .OrderBy(c => c.CatNo)
+                .OrderBy(c => c.CategoryId)
                 .Select(c => new CategoryResponseDto
                 {
-                    CatNo = c.CatNo,
+                    CategoryId = c.CategoryId,
                     EvaluationTypeId = c.EvaluationTypeId,
-                    CatRn = c.CatRn,
-                    CatName = c.CatName,
-                    CatRate = c.CatRate
+                    CategoryName = c.CategoryName,
+                    CategoryRate = c.CategoryRate
                 })
                 .ToListAsync();
 
             return new OkObjectResult(data);
         }
 
-        public async Task<ActionResult<CategoryResponseDto>> GetByIdAsync(int catNo)
+        public async Task<ActionResult<CategoryResponseDto>> GetByIdAsync(int categoryId)
         {
             var category = await _context.TeacherEvaluationCategories
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.CatNo == catNo);
+                .FirstOrDefaultAsync(c => c.CategoryId == categoryId);
 
             if (category is null)
                 return new NotFoundObjectResult(new { message = "Category not found." });
@@ -78,16 +77,15 @@ namespace SemsApi.Services
             var entity = new EvaluationCategory
             {
                 EvaluationTypeId = request.EvaluationTypeId!.Value,
-                CatRn = request.CatRn!.Trim(),
-                CatName = request.CatName!.Trim(),
-                CatRate = Math.Round(request.CatRate!.Value, 2)
+                CategoryName = request.CategoryName!.Trim(),
+                CategoryRate = Math.Round(request.CategoryRate!.Value, 2)
             };
 
             _context.TeacherEvaluationCategories.Add(entity);
             await _context.SaveChangesAsync();
 
             return new CreatedResult(
-                $"/api/evaluation/categories/{entity.CatNo}",
+                $"/api/evaluation/categories/{entity.CategoryId}",
                 new
                 {
                     message = "Category created successfully.",
@@ -99,10 +97,10 @@ namespace SemsApi.Services
         // UPDATE
         // ---------------------------------------------------------------------
 
-        public async Task<ActionResult> UpdateAsync(int catNo, CategoryRequestDto request)
+        public async Task<ActionResult> UpdateAsync(int categoryId, CategoryRequestDto request)
         {
             var category = await _context.TeacherEvaluationCategories
-                .FirstOrDefaultAsync(c => c.CatNo == catNo);
+                .FirstOrDefaultAsync(c => c.CategoryId == categoryId);
 
             if (category is null)
                 return new NotFoundObjectResult(new { message = "Category not found." });
@@ -136,9 +134,8 @@ namespace SemsApi.Services
             }
 
             category.EvaluationTypeId = newEvaluationTypeId;
-            category.CatRn = request.CatRn!.Trim();
-            category.CatName = request.CatName!.Trim();
-            category.CatRate = Math.Round(request.CatRate!.Value, 2);
+            category.CategoryName = request.CategoryName!.Trim();
+            category.CategoryRate = Math.Round(request.CategoryRate!.Value, 2);
 
             await _context.SaveChangesAsync();
 
@@ -153,22 +150,30 @@ namespace SemsApi.Services
         // DELETE
         // ---------------------------------------------------------------------
 
-        public async Task<ActionResult> DeleteAsync(int catNo)
+        public async Task<ActionResult> DeleteAsync(int categoryId)
         {
             var category = await _context.TeacherEvaluationCategories
-                .FirstOrDefaultAsync(c => c.CatNo == catNo);
+                .FirstOrDefaultAsync(c => c.CategoryId == categoryId);
 
             if (category is null)
                 return new NotFoundObjectResult(new { message = "Category not found." });
 
-            var hasDependentQuestions = await _context.EvaluationQuestions
-                .AnyAsync(q => q.CatNo == catNo);
+            var hasDependentFormCategories = await _context.EvaluationFormCategories
+                .AnyAsync(fc => fc.CategoryId == categoryId);
 
-            if (hasDependentQuestions)
+            var hasDependentQuestions = await _context.EvaluationFormQuestions
+                .Join(
+                    _context.EvaluationFormCategories,
+                    q => q.FormCategoryId,
+                    fc => fc.FormCategoryId,
+                    (q, fc) => new { fc.CategoryId })
+                .AnyAsync(x => x.CategoryId == categoryId);
+
+            if (hasDependentFormCategories || hasDependentQuestions)
             {
                 return new ConflictObjectResult(new
                 {
-                    message = "Cannot delete this category because evaluation questions are associated with it."
+                    message = "Cannot delete this category because it is referenced by forms or evaluation questions."
                 });
             }
 

@@ -7,7 +7,7 @@ using SemsApi.Utilities;
 namespace SemsApi.Controllers
 {
     [ApiController]
-    [Authorize(Roles = "QA,Admin")]
+    [Authorize]
     [Route("api/students")]
     public class StudentSubjectsController : ControllerBase
     {

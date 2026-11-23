@@ -25,7 +25,20 @@ namespace SemsApi.Services
             if (student is null)
                 return new NotFoundObjectResult(new { message = "No student profile linked to this user." });
 
+            if (!string.Equals(student.Status, "Active", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ObjectResult(new { message = "Student profile is not active." })
+                {
+                    StatusCode = 403
+                };
+            }
+
             var now = DateTime.UtcNow;
+
+            // Default to the student's own school year unless the caller overrides it.
+            var effectiveSchoolYear = !string.IsNullOrWhiteSpace(schoolYear)
+                ? schoolYear.Trim()
+                : (string.IsNullOrWhiteSpace(student.SchoolYear) ? null : student.SchoolYear);
 
             // Facility sessions currently open for this student's SY/Term
             var sessionsQuery = _context.EvaluationSessions.AsNoTracking()
@@ -34,15 +47,27 @@ namespace SemsApi.Services
                     s.Status == EvaluationSessionStatus.Open &&
                     (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
                     (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now) &&
-                    s.EvaluationForm.TargetType == "Facility" &&
-                    s.EvaluationForm.IsActive == 1);
+                    s.EvaluationForm.IsActive == 1 &&
+                    s.EvaluationForm.EvaluationType.IsFacility);
 
-            if (!string.IsNullOrWhiteSpace(schoolYear))
-                sessionsQuery = sessionsQuery.Where(s => s.SchoolYear == schoolYear);
+            if (!string.IsNullOrWhiteSpace(effectiveSchoolYear))
+                sessionsQuery = sessionsQuery.Where(s => s.SchoolYear == effectiveSchoolYear);
             if (term.HasValue)
                 sessionsQuery = sessionsQuery.Where(s => s.Term == term.Value);
 
             var sessions = await sessionsQuery.ToListAsync(ct);
+
+            // Honour the session grade scope when the student's grade level is known.
+            var studentGrade = await ResolveStudentGradeAsync(student, ct);
+            if (studentGrade.HasValue)
+            {
+                sessions = sessions
+                    .Where(s =>
+                        (!s.GradeLevelFrom.HasValue || s.GradeLevelFrom.Value <= studentGrade.Value) &&
+                        (!s.GradeLevelTo.HasValue || s.GradeLevelTo.Value >= studentGrade.Value))
+                    .ToList();
+            }
+
             if (sessions.Count == 0)
                 return new OkObjectResult(new List<FacilityEvaluationAssignmentDto>());
 
@@ -79,8 +104,6 @@ namespace SemsApi.Services
                     {
                         FacilityId = facility.FacilityId,
                         FacilityName = facility.FacilityName,
-                        Description = facility.Description,
-                        Location = facility.Location,
                         EvaluationTypeId = session.EvaluationForm.EvaluationTypeId,
                         FormId = session.FormId,
                         EvaluationSessionId = session.EvaluationSessionId,
@@ -109,6 +132,14 @@ namespace SemsApi.Services
             if (student is null)
                 return new NotFoundObjectResult(new { message = "No student profile linked to this user." });
 
+            if (!string.Equals(student.Status, "Active", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ObjectResult(new { message = "Student profile is not active." })
+                {
+                    StatusCode = 403
+                };
+            }
+
             if (request.Answers is null || request.Answers.Count == 0)
                 return new BadRequestObjectResult(new { message = "At least one answer is required." });
 
@@ -124,12 +155,24 @@ namespace SemsApi.Services
 
             var session = await _context.EvaluationSessions.AsNoTracking()
                 .Include(s => s.EvaluationForm)
+                    .ThenInclude(f => f.EvaluationType)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == request.EvaluationSessionId, ct);
 
             if (session is null)
                 return new BadRequestObjectResult(new { message = "Evaluation session not found." });
 
-            if (session.EvaluationForm.TargetType != "Facility")
+            var studentGrade = await ResolveStudentGradeAsync(student, ct);
+            if (studentGrade.HasValue &&
+                ((session.GradeLevelFrom.HasValue && studentGrade.Value < session.GradeLevelFrom.Value) ||
+                 (session.GradeLevelTo.HasValue && studentGrade.Value > session.GradeLevelTo.Value)))
+            {
+                return new BadRequestObjectResult(new
+                {
+                    message = "This evaluation session is not open for your grade level."
+                });
+            }
+
+            if (!FormHelper.IsFacilityEvaluation(session.EvaluationForm.EvaluationType))
                 return new BadRequestObjectResult(new
                 {
                     message = "The selected evaluation session is not a facility evaluation session."
@@ -154,42 +197,45 @@ namespace SemsApi.Services
                     .AnyAsync(t => t.EvaluationTypeId == request.EvaluationTypeId, ct))
                 return new BadRequestObjectResult(new { message = "Evaluation type not found." });
 
-            // Validate the questions belong to this evaluation type and exist
-            if (request.Answers.Select(a => a.QnNo).Distinct().Count() != request.Answers.Count)
+            // Validate the questions belong to this form's selected categories
+            if (request.Answers.Select(a => a.QuestionId).Distinct().Count() != request.Answers.Count)
                 return new BadRequestObjectResult(new { message = "Duplicate question IDs are not allowed." });
 
-            var qnNos = request.Answers.Select(a => a.QnNo).Distinct().ToList();
-            var validQuestions = await _context.EvaluationQuestions.AsNoTracking()
-                .Where(q => qnNos.Contains(q.QnNo))
-                .Select(q => new { q.QnNo, q.CatNo, q.Category.EvaluationTypeId })
+            var questionIds = request.Answers.Select(a => a.QuestionId).Distinct().ToList();
+            var validQuestions = await _context.EvaluationFormQuestions.AsNoTracking()
+                .Join(
+                    _context.EvaluationFormCategories.AsNoTracking(),
+                    q => q.FormCategoryId,
+                    fc => fc.FormCategoryId,
+                    (q, fc) => new { q.FormQuestionId, fc.CategoryId, fc.FormId })
+                .Where(x => questionIds.Contains(x.FormQuestionId) && x.FormId == session.FormId)
                 .ToListAsync(ct);
 
-            if (validQuestions.Count != qnNos.Count)
+            if (validQuestions.Count != questionIds.Count)
                 return new BadRequestObjectResult(new { message = "One or more question ids are invalid." });
 
-            if (validQuestions.Any(q => q.EvaluationTypeId != request.EvaluationTypeId))
-                return new BadRequestObjectResult(new
-                {
-                    message = "One or more questions do not belong to the selected evaluation type."
-                });
+            // Ensure each answer's CategoryId matches the question's form category
+            var questionMap = validQuestions.ToDictionary(q => q.FormQuestionId);
+            if (request.Answers.Any(a => !questionMap.TryGetValue(a.QuestionId, out var q) || q.CategoryId != a.CategoryId))
+                return new BadRequestObjectResult(new { message = "One or more answers have a CategoryId that does not match the question." });
 
             // Validate rating values (0..5 is the current frontend scale; extend if needed)
-            if (request.Answers.Any(a => a.RateVal < 0 || a.RateVal > 5))
+            if (request.Answers.Any(a => a.RateVal < 1 || a.RateVal > 5))
                 return new BadRequestObjectResult(new
                 {
-                    message = "RateVal must be between 0 and 5."
+                    message = "RateVal must be between 1 and 5."
                 });
 
-            // Duplicate submission check (aligned with DB unique index: StudentId, FacilityId, SchoolYear, Term)
+            // Duplicate submission check (aligned with the DB unique index:
+            // StudentId, FacilityId, EvaluationSessionId)
             var duplicate = await _context.FacilityEvaluationSubmissions.AnyAsync(s =>
                 s.StudentId == student.StudentId &&
                 s.FacilityId == facility.FacilityId &&
-                s.SchoolYear == session.SchoolYear &&
-                s.Term == session.Term, ct);
+                s.EvaluationSessionId == session.EvaluationSessionId, ct);
             if (duplicate)
                 return new ConflictObjectResult(new
                 {
-                    message = "This facility has already been evaluated for this school year and term."
+                    message = "This facility has already been evaluated for this evaluation session."
                 });
 
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
@@ -211,8 +257,8 @@ namespace SemsApi.Services
                 {
                     submission.Answers.Add(new FacilityEvaluationAnswer
                     {
-                        CatNo = a.CatNo,
-                        QnNo = a.QnNo,
+                        CategoryId = a.CategoryId,
+                        QuestionId = a.QuestionId,
                         RateVal = a.RateVal
                     });
                 }
@@ -302,10 +348,10 @@ namespace SemsApi.Services
             var responseCount = submissions.Select(s => s.StudentId).Distinct().Count();
 
             var categoryResults = allAnswers
-                .GroupBy(a => a.CatNo)
+                .GroupBy(a => a.CategoryId)
                 .Select(g => new FacilityEvaluationCategoryResultDto
                 {
-                    CatNo = g.Key,
+                    CategoryId = g.Key,
                     ResponseCount = g.Count(),
                     AverageRating = g.Any()
                         ? (decimal?)Math.Round(g.Average(a => a.RateVal), 2)
@@ -314,11 +360,11 @@ namespace SemsApi.Services
                 .ToList();
 
             var questionResults = allAnswers
-                .GroupBy(a => new { a.QnNo, a.CatNo })
+                .GroupBy(a => new { a.QuestionId, a.CategoryId })
                 .Select(g => new FacilityEvaluationQuestionResultDto
                 {
-                    QnNo = g.Key.QnNo,
-                    CatNo = g.Key.CatNo,
+                    QuestionId = g.Key.QuestionId,
+                    CategoryId = g.Key.CategoryId,
                     ResponseCount = g.Count(),
                     AverageRating = g.Any()
                         ? (decimal?)Math.Round(g.Average(a => a.RateVal), 2)
@@ -327,26 +373,25 @@ namespace SemsApi.Services
                 .ToList();
 
             // Enrich with names
-            var catNos = categoryResults.Select(c => c.CatNo).ToList();
+            var categoryIds = categoryResults.Select(c => c.CategoryId).ToList();
             var categories = await _context.TeacherEvaluationCategories.AsNoTracking()
-                .Where(c => catNos.Contains(c.CatNo)).ToListAsync(ct);
-            var catMap = categories.ToDictionary(c => c.CatNo);
+                .Where(c => categoryIds.Contains(c.CategoryId)).ToListAsync(ct);
+            var catMap = categories.ToDictionary(c => c.CategoryId);
             foreach (var c in categoryResults)
             {
-                if (catMap.TryGetValue(c.CatNo, out var cat))
+                if (catMap.TryGetValue(c.CategoryId, out var cat))
                 {
-                    c.CatName = cat.CatName;
-                    c.CatRn = cat.CatRn;
-                    c.CatRate = cat.CatRate;
+                    c.CategoryName = cat.CategoryName;
+                    c.CategoryRate = cat.CategoryRate;
                 }
             }
 
-            var qnNos = questionResults.Select(q => q.QnNo).ToList();
-            var questions = await _context.EvaluationQuestions.AsNoTracking()
-                .Where(q => qnNos.Contains(q.QnNo)).ToListAsync(ct);
-            var qMap = questions.ToDictionary(q => q.QnNo);
+            var questionIds = questionResults.Select(q => q.QuestionId).ToList();
+            var questions = await _context.EvaluationFormQuestions.AsNoTracking()
+                .Where(q => questionIds.Contains(q.FormQuestionId)).ToListAsync(ct);
+            var qMap = questions.ToDictionary(q => q.FormQuestionId);
             foreach (var q in questionResults)
-                if (qMap.TryGetValue(q.QnNo, out var qn)) q.QnName = qn.QnName;
+                if (qMap.TryGetValue(q.QuestionId, out var qn)) q.QuestionName = qn.QuestionName;
 
             var detail = new FacilityEvaluationDetailResultDto
             {
@@ -356,8 +401,8 @@ namespace SemsApi.Services
                 AverageRating = allAnswers.Count > 0
                     ? (decimal?)Math.Round(allAnswers.Average(a => a.RateVal), 2)
                     : null,
-                Categories = categoryResults.OrderBy(c => c.CatNo).ToList(),
-                Questions = questionResults.OrderBy(q => q.CatNo).ThenBy(q => q.QnNo).ToList()
+                Categories = categoryResults.OrderBy(c => c.CategoryId).ToList(),
+                Questions = questionResults.OrderBy(q => q.CategoryId).ThenBy(q => q.QuestionId).ToList()
             };
 
             return new OkObjectResult(detail);
@@ -371,11 +416,12 @@ namespace SemsApi.Services
         {
             var session = await _context.EvaluationSessions.AsNoTracking()
                 .Include(s => s.EvaluationForm)
+                    .ThenInclude(f => f.EvaluationType)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == sessionId, ct);
             if (session is null)
                 return new NotFoundObjectResult(new { message = "Evaluation session not found." });
 
-            if (session.EvaluationForm.TargetType != "Facility")
+            if (!FormHelper.IsFacilityEvaluation(session.EvaluationForm.EvaluationType))
                 return new BadRequestObjectResult(new
                 {
                     message = "This session is not a facility evaluation session."
@@ -397,6 +443,26 @@ namespace SemsApi.Services
                 .ToListAsync(ct);
 
             return new OkObjectResult(data);
+        }
+
+        // -----------------------------------------------------------------
+        // HELPERS
+        // -----------------------------------------------------------------
+        /// <summary>
+        /// Resolves the student's numeric grade level. Prefers the most recent term
+        /// enrollment (canonical numeric value) and falls back to the legacy free-text
+        /// Student.GradeLevel. Returns null when neither yields a usable grade.
+        /// </summary>
+        private async Task<int?> ResolveStudentGradeAsync(Student student, CancellationToken ct)
+        {
+            var enrollmentGrade = await _context.StudentTermEnrollments.AsNoTracking()
+                .Where(e => e.StudentId == student.StudentId)
+                .OrderByDescending(e => e.SchoolYear)
+                .ThenByDescending(e => e.Term)
+                .Select(e => (int?)e.GradeLevel)
+                .FirstOrDefaultAsync(ct);
+
+            return enrollmentGrade ?? GradeLevelHelper.ParseDisplay(student.GradeLevel);
         }
     }
 }

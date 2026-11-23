@@ -13,11 +13,13 @@ namespace SemsApi.Interfaces
             EvaluationSessionStatus? status = null,
             bool onlyOpen = false,
             bool studentView = false,
+            int? studentUserId = null,
             CancellationToken ct = default);
 
         Task<ActionResult<EvaluationSessionDetailDto>> GetByIdAsync(
             int id,
             bool studentView = false,
+            int? studentUserId = null,
             CancellationToken ct = default);
 
         Task<ActionResult> CreateAsync(
