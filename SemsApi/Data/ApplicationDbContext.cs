@@ -393,10 +393,10 @@ namespace SemsApi.Data
                 e.Property(x => x.Status).HasConversion<int>().IsRequired();
                 e.Property(x => x.Notes).HasMaxLength(1000);
 
-                // One non-archived session per EvaluationForm + SchoolYear + Term.
-                // A form may have multiple scoped sessions per period (different grade ranges);
-                // archived sessions are historical and may repeat the same period.
-                e.HasIndex(x => new { x.FormId, x.SchoolYear, x.Term, x.GradeLevelFrom, x.GradeLevelTo })
+                // One non-archived session per EvaluationForm + facility + SchoolYear + Term.
+                // FacilityId is part of the key so the same form can be offered to several
+                // facilities in one period. Archived sessions may repeat the same period.
+                e.HasIndex(x => new { x.FormId, x.FacilityId, x.SchoolYear, x.Term, x.GradeLevelFrom, x.GradeLevelTo })
                     .IsUnique()
                     .HasFilter("[Status] <> 3");
 
@@ -406,6 +406,11 @@ namespace SemsApi.Data
                 e.HasOne(x => x.EvaluationForm)
                     .WithMany()
                     .HasForeignKey(x => x.FormId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.Facility)
+                    .WithMany()
+                    .HasForeignKey(x => x.FacilityId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 e.HasOne(x => x.Creator)

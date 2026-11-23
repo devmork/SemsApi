@@ -10,6 +10,10 @@ namespace SemsApi.DTO.EvaluationSessions
         public int EvaluationTypeId { get; set; }
         public string EvaluationTypeName { get; set; } = string.Empty;
 
+        /// <summary>Set only for facility evaluation sessions.</summary>
+        public int? FacilityId { get; set; }
+        public string? FacilityName { get; set; }
+
         public string SchoolYear { get; set; } = string.Empty;
         public int Term { get; set; }
 

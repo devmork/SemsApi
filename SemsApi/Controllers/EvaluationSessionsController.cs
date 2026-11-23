@@ -66,7 +66,8 @@ namespace SemsApi.Controllers
         }
 
         /// <summary>
-        /// Create a Draft session from an existing EvaluationForm. CreatedBy is captured from the
+        /// Create a session from an existing EvaluationForm. Sessions open immediately when the
+        /// form and window allow it; otherwise they stay Draft until someone opens them. CreatedBy is captured from the
         /// </summary>
         [HttpPost]
         public async Task<ActionResult> Create(

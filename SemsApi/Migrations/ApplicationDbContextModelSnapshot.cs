@@ -413,6 +413,9 @@ namespace SemsApi.Migrations
                     b.Property<int>("CreatedBy")
                         .HasColumnType("int");
 
+                    b.Property<int?>("FacilityId")
+                        .HasColumnType("int");
+
                     b.Property<int>("FormId")
                         .HasColumnType("int");
 
@@ -447,9 +450,11 @@ namespace SemsApi.Migrations
 
                     b.HasIndex("CreatedBy");
 
+                    b.HasIndex("FacilityId");
+
                     b.HasIndex("Status", "OpensAtUtc", "ClosesAtUtc");
 
-                    b.HasIndex("FormId", "SchoolYear", "Term", "GradeLevelFrom", "GradeLevelTo")
+                    b.HasIndex("FormId", "FacilityId", "SchoolYear", "Term", "GradeLevelFrom", "GradeLevelTo")
                         .IsUnique()
                         .HasFilter("[Status] <> 3");
 
@@ -1187,6 +1192,11 @@ namespace SemsApi.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("SemsApi.Models.Facility", "Facility")
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SemsApi.Models.Eval.EvaluationForm", "EvaluationForm")
                         .WithMany()
                         .HasForeignKey("FormId")
@@ -1196,6 +1206,8 @@ namespace SemsApi.Migrations
                     b.Navigation("Creator");
 
                     b.Navigation("EvaluationForm");
+
+                    b.Navigation("Facility");
                 });
 
             modelBuilder.Entity("SemsApi.Models.FacilityEvaluationAnswer", b =>

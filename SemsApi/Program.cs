@@ -170,6 +170,8 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
     await RoleSeeder.SeedAsync(roleManager);
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await FacilitySeeder.SeedAsync(dbContext);
 }
 
 if (app.Environment.IsDevelopment())

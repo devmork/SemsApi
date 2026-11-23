@@ -40,7 +40,21 @@ namespace SemsApi.Services
                 ? schoolYear.Trim()
                 : (string.IsNullOrWhiteSpace(student.SchoolYear) ? null : student.SchoolYear);
 
-            // Facility sessions currently open for this student's SY/Term
+            // Active facilities are the only valid targets for a facility session.
+            var facilities = await _context.Facilities.AsNoTracking()
+                .Where(f => f.IsActive)
+                .OrderBy(f => f.FacilityName)
+                .ToListAsync(ct);
+
+            if (facilities.Count == 0)
+                return new OkObjectResult(new List<FacilityEvaluationAssignmentDto>());
+
+            var facilityIds = facilities.Select(f => f.FacilityId).ToList();
+
+            // Facility sessions currently open for this student's SY/Term and
+            // explicitly scoped to one of those facilities. Legacy sessions with
+            // no FacilityId are excluded here: broadcasting them to every facility
+            // is what made all facilities show the same form.
             var sessionsQuery = _context.EvaluationSessions.AsNoTracking()
                 .Include(s => s.EvaluationForm).ThenInclude(f => f.EvaluationType)
                 .Where(s =>
@@ -48,7 +62,9 @@ namespace SemsApi.Services
                     (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
                     (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now) &&
                     s.EvaluationForm.IsActive == 1 &&
-                    s.EvaluationForm.EvaluationType.IsFacility);
+                    s.EvaluationForm.EvaluationType.IsFacility &&
+                    s.FacilityId.HasValue &&
+                    facilityIds.Contains(s.FacilityId.Value));
 
             if (!string.IsNullOrWhiteSpace(effectiveSchoolYear))
                 sessionsQuery = sessionsQuery.Where(s => s.SchoolYear == effectiveSchoolYear);
@@ -73,14 +89,6 @@ namespace SemsApi.Services
 
             var sessionIds = sessions.Select(s => s.EvaluationSessionId).ToList();
 
-            var facilities = await _context.Facilities.AsNoTracking()
-                .Where(f => f.IsActive)
-                .OrderBy(f => f.FacilityName)
-                .ToListAsync(ct);
-
-            if (facilities.Count == 0)
-                return new OkObjectResult(new List<FacilityEvaluationAssignmentDto>());
-
             var submissions = await _context.FacilityEvaluationSubmissions.AsNoTracking()
                 .Where(s => s.StudentId == student.StudentId &&
                             s.EvaluationSessionId.HasValue &&
@@ -91,31 +99,33 @@ namespace SemsApi.Services
                 .GroupBy(s => (s.EvaluationSessionId!.Value, s.FacilityId))
                 .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.SubmittedAtUtc).First());
 
+            var facilitiesById = facilities.ToDictionary(f => f.FacilityId);
             var result = new List<FacilityEvaluationAssignmentDto>();
 
             foreach (var session in sessions)
             {
-                foreach (var facility in facilities)
+                if (!session.FacilityId.HasValue ||
+                    !facilitiesById.TryGetValue(session.FacilityId.Value, out var facility))
+                    continue;
+
+                submissionLookup.TryGetValue(
+                    (session.EvaluationSessionId, facility.FacilityId), out var sub);
+
+                var item = new FacilityEvaluationAssignmentDto
                 {
-                    submissionLookup.TryGetValue(
-                        (session.EvaluationSessionId, facility.FacilityId), out var sub);
+                    FacilityId = facility.FacilityId,
+                    FacilityName = facility.FacilityName,
+                    EvaluationTypeId = session.EvaluationForm.EvaluationTypeId,
+                    FormId = session.FormId,
+                    EvaluationSessionId = session.EvaluationSessionId,
+                    SchoolYear = session.SchoolYear,
+                    Term = session.Term,
+                    IsCompleted = sub is not null,
+                    SubmittedAtUtc = sub?.SubmittedAtUtc
+                };
 
-                    var item = new FacilityEvaluationAssignmentDto
-                    {
-                        FacilityId = facility.FacilityId,
-                        FacilityName = facility.FacilityName,
-                        EvaluationTypeId = session.EvaluationForm.EvaluationTypeId,
-                        FormId = session.FormId,
-                        EvaluationSessionId = session.EvaluationSessionId,
-                        SchoolYear = session.SchoolYear,
-                        Term = session.Term,
-                        IsCompleted = sub is not null,
-                        SubmittedAtUtc = sub?.SubmittedAtUtc
-                    };
-
-                    if (filter is null || item.IsCompleted == filter.Value)
-                        result.Add(item);
-                }
+                if (filter is null || item.IsCompleted == filter.Value)
+                    result.Add(item);
             }
 
             return new OkObjectResult(result.OrderBy(x => x.FacilityName).ToList());
@@ -176,6 +186,16 @@ namespace SemsApi.Services
                 return new BadRequestObjectResult(new
                 {
                     message = "The selected evaluation session is not a facility evaluation session."
+                });
+
+            // The assignment list only exposes a session for its own facility.
+            // Enforce the same rule here so a student cannot submit facility B's
+            // answers against facility A's session by manipulating request ids.
+            // Legacy null-FacilityId sessions are intentionally not accepted.
+            if (session.FacilityId != facility.FacilityId)
+                return new BadRequestObjectResult(new
+                {
+                    message = "The submitted facility does not match the evaluation session."
                 });
 
             if (!EvaluationSessionHelper.IsWithinWindow(session, DateTime.UtcNow))

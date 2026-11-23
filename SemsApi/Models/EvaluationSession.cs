@@ -14,6 +14,13 @@ namespace SemsApi.Models
         public int FormId { get; set; }
         public EvaluationForm EvaluationForm { get; set; } = null!;
 
+        /// <summary>
+        /// Null for teacher/subject evaluations. For a facility evaluation this is the one
+        /// facility the session is offered to, so a student sees that facility's own form.
+        /// </summary>
+        public int? FacilityId { get; set; }
+        public Facility? Facility { get; set; }
+
         /// <summary>School year, e.g. "2025-2026".</summary>
         public string SchoolYear { get; set; } = string.Empty;
 

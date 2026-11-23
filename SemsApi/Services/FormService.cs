@@ -76,12 +76,12 @@ namespace SemsApi.Services
                 .ThenBy(fc => fc.CategoryId)
                 .ToListAsync();
 
-            var categoryIds = formCategories.Select(fc => fc.CategoryId).ToList();
+            var formCategoryIds = formCategories.Select(fc => fc.FormCategoryId).ToList();
 
             var formQuestions = await _context.EvaluationFormQuestions
                 .AsNoTracking()
                 .Include(q => q.FormCategory)
-                .Where(q => categoryIds.Contains(q.FormCategory.CategoryId))
+                .Where(q => formCategoryIds.Contains(q.FormCategoryId))
                 .OrderBy(q => q.FormCategory.DisplayOrder)
                 .ThenBy(q => q.DisplayOrder)
                 .ToListAsync();
@@ -102,7 +102,7 @@ namespace SemsApi.Services
                     CategoryName = fc.EvaluationCategory?.CategoryName,
                     CategoryRate = fc.EvaluationCategory?.CategoryRate,
                     Questions = formQuestions
-                        .Where(q => q.FormCategory.CategoryId == fc.CategoryId)
+                        .Where(q => q.FormCategoryId == fc.FormCategoryId)
                         .Select(q => new EvaluationQuestionDto
                         {
                             QuestionId = q.FormQuestionId,

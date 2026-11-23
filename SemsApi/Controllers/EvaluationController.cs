@@ -45,12 +45,12 @@ namespace SemsApi.Controllers
                 .ThenBy(fc => fc.CategoryId)
                 .ToListAsync();
 
-            var categoryIds = formCategories.Select(fc => fc.CategoryId).ToList();
+            var formCategoryIds = formCategories.Select(fc => fc.FormCategoryId).ToList();
 
             var questions = await _context.EvaluationFormQuestions
                 .AsNoTracking()
                 .Include(q => q.FormCategory)
-                .Where(q => categoryIds.Contains(q.FormCategory.CategoryId))
+                .Where(q => formCategoryIds.Contains(q.FormCategoryId))
                 .OrderBy(q => q.FormCategory.DisplayOrder)
                 .ThenBy(q => q.DisplayOrder)
                 .ToListAsync();
@@ -61,7 +61,7 @@ namespace SemsApi.Controllers
                 CategoryName = fc.EvaluationCategory?.CategoryName,
                 CategoryRate = fc.EvaluationCategory?.CategoryRate,
                 Questions = questions
-                    .Where(q => q.FormCategory.CategoryId == fc.CategoryId)
+                    .Where(q => q.FormCategoryId == fc.FormCategoryId)
                     .Select(q => new EvaluationQuestionDto
                     {
                         QuestionId = q.FormQuestionId,
@@ -85,11 +85,21 @@ namespace SemsApi.Controllers
                 .AsNoTracking()
                 .AsQueryable();
 
-            if (formId.HasValue)
-                query = query.Where(q => q.FormCategory.FormId == formId.Value);
+            // Filter through FormCategoryId, not the shared CategoryId: two forms can
+            // use the same category while owning different questions for it.
+            if (formId.HasValue || categoryId.HasValue)
+            {
+                var formCategoryIds = await _context.EvaluationFormCategories
+                    .AsNoTracking()
+                    .Where(fc =>
+                        fc.IsActive &&
+                        (!formId.HasValue || fc.FormId == formId.Value) &&
+                        (!categoryId.HasValue || fc.CategoryId == categoryId.Value))
+                    .Select(fc => fc.FormCategoryId)
+                    .ToListAsync();
 
-            if (categoryId.HasValue)
-                query = query.Where(q => q.FormCategory.CategoryId == categoryId.Value);
+                query = query.Where(q => formCategoryIds.Contains(q.FormCategoryId));
+            }
 
             var data = await query
                 .OrderBy(q => q.FormCategoryId)

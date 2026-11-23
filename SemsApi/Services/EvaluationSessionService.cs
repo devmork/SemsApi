@@ -59,6 +59,7 @@ namespace SemsApi.Services
             var sessions = await query
                 .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
+                .Include(s => s.Facility)
                 .OrderByDescending(s => s.CreatedAtUtc)
                 .ThenByDescending(s => s.EvaluationSessionId)
                 .ToListAsync(ct);
@@ -96,6 +97,7 @@ namespace SemsApi.Services
                 .AsNoTracking()
                 .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
+                .Include(s => s.Facility)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == id, ct);
 
             if (session is null)
@@ -120,6 +122,8 @@ namespace SemsApi.Services
                 FormTitle = session.EvaluationForm.Title,
                 EvaluationTypeId = session.EvaluationForm.EvaluationTypeId,
                 EvaluationTypeName = session.EvaluationForm.EvaluationType.EvaluationTypeName,
+                FacilityId = session.FacilityId,
+                FacilityName = session.Facility?.FacilityName,
                 SchoolYear = session.SchoolYear,
                 Term = session.Term,
                 GradeLevelFrom = session.GradeLevelFrom,
@@ -156,11 +160,35 @@ namespace SemsApi.Services
             if (EvaluationForm is null)
                 return new BadRequestObjectResult(new { message = "EvaluationForm not found." });
 
+            var isFacilityForm = EvaluationForm.EvaluationType.IsFacility;
+
+            if (isFacilityForm && !request.FacilityId.HasValue)
+                return new BadRequestObjectResult(new
+                {
+                    message = "FacilityId is required for a facility evaluation session."
+                });
+
+            if (!isFacilityForm && request.FacilityId.HasValue)
+                return new BadRequestObjectResult(new
+                {
+                    message = "FacilityId is only valid for facility evaluation sessions."
+                });
+
+            if (request.FacilityId.HasValue)
+            {
+                var facilityExists = await _context.Facilities
+                    .AnyAsync(f => f.FacilityId == request.FacilityId.Value && f.IsActive, ct);
+
+                if (!facilityExists)
+                    return new BadRequestObjectResult(new { message = "Facility not found or inactive." });
+            }
+
             var schoolYear = request.SchoolYear.Trim();
 
             var duplicateExists = await _context.EvaluationSessions
                 .AnyAsync(s =>
                     s.FormId == request.FormId &&
+                    s.FacilityId == request.FacilityId &&
                     s.SchoolYear == schoolYear &&
                     s.Term == request.Term &&
                     s.GradeLevelFrom == request.GradeLevelFrom &&
@@ -179,6 +207,7 @@ namespace SemsApi.Services
             var entity = new EvaluationSession
             {
                 FormId = request.FormId,
+                FacilityId = request.FacilityId,
                 SchoolYear = schoolYear,
                 Term = request.Term,
                 GradeLevelFrom = request.GradeLevelFrom,
@@ -206,10 +235,20 @@ namespace SemsApi.Services
             }
 
             var created = await _context.EvaluationSessions
-                .AsNoTracking()
                 .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
+                .Include(s => s.Facility)
                 .FirstAsync(s => s.EvaluationSessionId == entity.EvaluationSessionId, ct);
+
+            // A session created through the QA dialog is immediately visible to
+            // students when the form and window allow it; otherwise it stays a
+            // Draft until someone opens it.
+            var openBlockingError = await GetOpenBlockingErrorAsync(created, ct);
+            if (openBlockingError is null)
+            {
+                created.Status = EvaluationSessionStatus.Open;
+                await _context.SaveChangesAsync(ct);
+            }
 
             return new CreatedResult(
                 $"/api/evaluation/sessions/{entity.EvaluationSessionId}",
@@ -229,6 +268,7 @@ namespace SemsApi.Services
             var session = await _context.EvaluationSessions
                 .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
+                .Include(s => s.Facility)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == id, ct);
 
             if (session is null)
@@ -390,6 +430,7 @@ namespace SemsApi.Services
             var session = await _context.EvaluationSessions
                 .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
+                .Include(s => s.Facility)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == id, ct);
 
             if (session is null)
@@ -445,6 +486,7 @@ namespace SemsApi.Services
             var session = await _context.EvaluationSessions
                 .Include(s => s.EvaluationForm)
                     .ThenInclude(f => f.EvaluationType)
+                .Include(s => s.Facility)
                 .FirstOrDefaultAsync(s => s.EvaluationSessionId == id, ct);
 
             if (session is null)
@@ -578,12 +620,12 @@ namespace SemsApi.Services
                 .ThenBy(fc => fc.CategoryId)
                 .ToListAsync(ct);
 
-            var categoryIds = formCategories.Select(fc => fc.CategoryId).ToList();
+            var formCategoryIds = formCategories.Select(fc => fc.FormCategoryId).ToList();
 
             var formQuestions = await _context.EvaluationFormQuestions
                 .AsNoTracking()
                 .Include(q => q.FormCategory)
-                .Where(q => categoryIds.Contains(q.FormCategory.CategoryId))
+                .Where(q => formCategoryIds.Contains(q.FormCategoryId))
                 .OrderBy(q => q.FormCategory.DisplayOrder)
                 .ThenBy(q => q.DisplayOrder)
                 .ToListAsync(ct);
@@ -604,7 +646,7 @@ namespace SemsApi.Services
                     CategoryName = fc.EvaluationCategory?.CategoryName,
                     CategoryRate = fc.EvaluationCategory?.CategoryRate,
                     Questions = formQuestions
-                        .Where(q => q.FormCategory.CategoryId == fc.CategoryId)
+                        .Where(q => q.FormCategoryId == fc.FormCategoryId)
                         .Select(q => new EvaluationQuestionDto
                         {
                             QuestionId = q.FormQuestionId,

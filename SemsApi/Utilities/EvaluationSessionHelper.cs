@@ -19,6 +19,9 @@ namespace SemsApi.Utilities
             if (request.FormId <= 0)
                 return "FormId is required.";
 
+            if (request.FacilityId.HasValue && request.FacilityId.Value <= 0)
+                return "FacilityId must be a positive number when provided.";
+
             if (string.IsNullOrWhiteSpace(request.SchoolYear))
                 return "SchoolYear is required.";
 
@@ -131,6 +134,8 @@ namespace SemsApi.Utilities
                 FormTitle = session.EvaluationForm?.Title ?? string.Empty,
                 EvaluationTypeId = session.EvaluationForm?.EvaluationTypeId ?? 0,
                 EvaluationTypeName = session.EvaluationForm?.EvaluationType?.EvaluationTypeName ?? string.Empty,
+                FacilityId = session.FacilityId,
+                FacilityName = session.Facility?.FacilityName,
                 SchoolYear = session.SchoolYear,
                 Term = session.Term,
                 GradeLevelFrom = session.GradeLevelFrom,
