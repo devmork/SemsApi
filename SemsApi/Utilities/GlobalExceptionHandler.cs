@@ -16,6 +16,11 @@ namespace SemsApi.Utilities
         {
             var (status, message) = GetExceptionDetails(exception);
             httpContext.Response.StatusCode = status;
+
+            // RFC 9110: a 401 must carry at least one challenge.
+            if (status == StatusCodes.Status401Unauthorized)
+                httpContext.Response.Headers.WWWAuthenticate = "Bearer";
+
             await httpContext.Response.WriteAsJsonAsync(new ProblemDetails { Status = status, Title = message }, cancellationToken);
             return true;
         }

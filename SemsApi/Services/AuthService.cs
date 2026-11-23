@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SemsApi.Configuration;
@@ -33,12 +34,53 @@ namespace SemsApi.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _dbContext;
         private readonly IOptions<AuthOptions> _authOptions;
-        public AuthService(ITokenService tokenService, UserManager<ApplicationUser> userManager, ApplicationDbContext dbContext, IOptions<AuthOptions> authOptions)
+        private readonly IMemoryCache _cache;
+
+        private const string SignInCodePrefix = "signin-code:";
+        private static readonly TimeSpan SignInCodeLifetime = TimeSpan.FromSeconds(60);
+
+        public AuthService(ITokenService tokenService, UserManager<ApplicationUser> userManager, ApplicationDbContext dbContext, IOptions<AuthOptions> authOptions, IMemoryCache cache)
         {
             _tokenService = tokenService;
             _userManager = userManager;
             _dbContext = dbContext;
             _authOptions = authOptions;
+            _cache = cache;
+        }
+
+        public Task<string> CreateSignInCodeAsync(int userId, CancellationToken ct = default)
+        {
+            // 256 bits of entropy, URL-safe (the code is a query-string value).
+            var code = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+                .Replace('+', '-')
+                .Replace('/', '_')
+                .TrimEnd('=');
+
+            _cache.Set(SignInCodePrefix + code, userId, SignInCodeLifetime);
+            return Task.FromResult(code);
+        }
+
+        public Task<int?> RedeemSignInCodeAsync(string? code, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                return Task.FromResult<int?>(null);
+
+            var key = SignInCodePrefix + code;
+            if (!_cache.TryGetValue<int>(key, out var userId))
+                return Task.FromResult<int?>(null);
+
+            // Single use: remove before returning so a replay can never succeed.
+            _cache.Remove(key);
+            return Task.FromResult<int?>(userId);
+        }
+
+        public async Task<ApplicationUser?> GetActiveUserAsync(int userId, CancellationToken ct = default)
+        {
+            var user = await _userManager.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+            return user is null || user.Status != UserStatus.Active ? null : user;
         }
 
         public async Task<UserResponse?> GetCurrentUserAsync(int userId, CancellationToken ct = default)

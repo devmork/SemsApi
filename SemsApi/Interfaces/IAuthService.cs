@@ -15,5 +15,14 @@ namespace SemsApi.Interfaces
         Task<AuthTokenResponse> RefreshTokenAsync(string? refreshToken, CancellationToken ct = default);
         Task LogoutAsync(string? refreshToken, CancellationToken ct = default);
         Task<UserResponse?> GetCurrentUserAsync(int userId, CancellationToken ct = default);
+
+        /// <summary>Creates a single-use, short-lived code that stands in for tokens on the redirect URL.</summary>
+        Task<string> CreateSignInCodeAsync(int userId, CancellationToken ct = default);
+
+        /// <summary>Consumes a sign-in code. Returns the user id, or null when the code is unknown or already used.</summary>
+        Task<int?> RedeemSignInCodeAsync(string? code, CancellationToken ct = default);
+
+        /// <summary>Loads an active (not deactivated) user by id.</summary>
+        Task<ApplicationUser?> GetActiveUserAsync(int userId, CancellationToken ct = default);
     }
 }

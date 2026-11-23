@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -42,6 +43,16 @@ builder.Services.Scan(scan => scan
         .WithScopedLifetime()
  );
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                       | ForwardedHeaders.XForwardedProto
+                       | ForwardedHeaders.XForwardedHost;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -51,21 +62,9 @@ builder.Services.AddAuthentication(options =>
 {
     options.ClientId = builder.Configuration["Google:ClientId"]!;
     options.ClientSecret = builder.Configuration["Google:ClientSecret"]!;
-    options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.SignInScheme = IdentityConstants.ExternalScheme;
     options.SaveTokens = false;
     options.ClaimActions.MapJsonKey("email_verified", "email_verified");
-    options.SignInScheme = IdentityConstants.ExternalScheme;
-
-    options.Events.OnRedirectToAuthorizationEndpoint = ctx =>
-    {
-        var url = QueryHelpers.AddQueryString(ctx.RedirectUri, new Dictionary<string, string?>
-        {
-            ["hd"] = "dmc.edu.ph",
-            ["prompt"] = "select_account"
-        });
-        ctx.Response.Redirect(url);
-        return Task.CompletedTask;
-    };
 })
 .AddJwtBearer(options =>
 {
@@ -79,22 +78,10 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? ""))
     };
-
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            context.Token = context.Request.Cookies["ACCESS_TOKEN"];
-            return Task.CompletedTask;
-        }
-    };
 });
 
 builder.Services.AddCors(options =>
 {
-    // Vite binds the IPv6 loopback on some machines, so both `localhost` and
-    // `[::1]` (http and https) occur in practice. `Frontend:AllowedOrigins`
-    // adds extra origins without code changes; anything not listed is rejected.
     var origins = new List<string>();
 
     var configured = builder.Configuration["Frontend:AllowedOrigins"];
@@ -124,30 +111,50 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(origins.Distinct(StringComparer.OrdinalIgnoreCase).ToArray())
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyMethod();
     });
 });
 
 builder.Services.AddAuthorization();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddMemoryCache();
+
+// Sign-in codes and rate-limit counters live in process memory. This assumes a
+// single API instance; if MonsterASP ever scales out, move sign-in codes to
+// IDistributedCache or a database table and use a distributed rate limiter.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("auth", opt =>
+    {
+        // 60/min per IP (not 10) because a school network shares one NAT address,
+        // so a low limit would lock out an entire classroom. Still blocks
+        // sustained token guessing.
+        opt.PermitLimit = 60;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "SEMS API", Version = "v1" });
 
-    options.AddSecurityDefinition("AccessTokenCookie", new OpenApiSecurityScheme
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name = "ACCESS_TOKEN",
-        Type = SecuritySchemeType.ApiKey,
-        In = ParameterLocation.Cookie,
-        Description = "JWT issued at sign-in and stored in the ACCESS_TOKEN cookie."
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT access token returned by POST /api/auth/exchange or POST /api/auth/refresh."
     });
 
     options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
-        [new OpenApiSecuritySchemeReference("AccessTokenCookie", document)] = []
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
     });
 });
 builder.Services.AddProblemDetails();
@@ -155,13 +162,14 @@ builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
     await RoleSeeder.SeedAsync(roleManager);
-
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await FacilitySeeder.SeedAsync(context);
 }
 
 if (app.Environment.IsDevelopment())
@@ -172,9 +180,15 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "SEMS API v1");
     });
 }
-app.UseExceptionHandler();
-app.UseStatusCodePages();
+else
+{
+    // Production only: HSTS must never be sent from the local dev cert.
+    app.UseHsts();
+}
+
 app.UseHttpsRedirection();
+app.UseRouting();
+app.UseRateLimiter();
 app.UseCors("CorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
