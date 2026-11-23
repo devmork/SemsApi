@@ -732,8 +732,12 @@ namespace SemsApi.Services
             if (!session.GradeLevelFrom.HasValue && !session.GradeLevelTo.HasValue)
                 return true;
 
+            // A student whose grade cannot be resolved (for example a legacy
+            // "N/A" profile with no term enrollment) is not excluded by a grade
+            // scope. This matches the assignment lists and submission checks,
+            // so a session that appears as pending can always be opened.
             if (!studentGrade.HasValue)
-                return false;
+                return true;
 
             if (session.GradeLevelFrom.HasValue && studentGrade.Value < session.GradeLevelFrom.Value)
                 return false;
