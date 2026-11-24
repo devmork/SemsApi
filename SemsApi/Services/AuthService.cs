@@ -301,8 +301,9 @@ namespace SemsApi.Services
 
             var authorizedDomains = _authOptions.Value.AuthorizedDomains ?? Array.Empty<string>();
             var domain = email.Split('@').LastOrDefault();
-            if (string.IsNullOrEmpty(domain) || !authorizedDomains.Contains(domain, StringComparer.OrdinalIgnoreCase))
+            if (authorizedDomains.Length > 0 && !authorizedDomains.Contains(domain, StringComparer.OrdinalIgnoreCase))
                 throw new SignInRejectedException(SignInErrorCodes.DomainNotAllowed);
+
 
             var first = principal!.FindFirstValue(ClaimTypes.GivenName);
             var last = principal!.FindFirstValue(ClaimTypes.Surname);
