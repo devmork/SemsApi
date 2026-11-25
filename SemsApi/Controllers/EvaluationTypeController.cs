@@ -18,8 +18,7 @@ namespace SemsApi.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<GetEvaluationTypeDto>>> GetAll(
-            [FromQuery] string? search = null)
+        public async Task<ActionResult<List<GetEvaluationTypeDto>>> GetAll([FromQuery] string? search = null)
         {
             return await _service.GetAllAsync(search);
         }
@@ -31,15 +30,15 @@ namespace SemsApi.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<CreateEvaluationTypeDto>> Create([FromBody] CreateEvaluationTypeDto createEvaluationTypeDto)
+        public async Task<ActionResult<CreateEvaluationTypeDto>> Create([FromBody] CreateEvaluationTypeDto dto)
         {
-            return await _service.CreateAsync(createEvaluationTypeDto);
+            return await _service.CreateAsync(dto);
         }
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<UpdateEvaluationTypeDto>> Update(int id, [FromBody] UpdateEvaluationTypeDto updateEvaluationTypeDto)
+        public async Task<ActionResult<UpdateEvaluationTypeDto>> Update(int id, [FromBody] UpdateEvaluationTypeDto dto)
         {
-            return await _service.UpdateAsync(id, updateEvaluationTypeDto);
+            return await _service.UpdateAsync(id, dto);
         }
 
         [HttpDelete("{id:int}")]
