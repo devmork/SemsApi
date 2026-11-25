@@ -28,7 +28,7 @@ namespace SemsApi.Services
             _createValidator = createValidator;
             _updateValidator = updateValidator;
         }
-        public async Task<ActionResult<List<GetEvaluationTypeDto>>> GetAllAsync(string? search = null)
+        public async Task<ActionResult<List<EvaluationTypeDto>>> GetAllAsync(string? search = null)
         {
             var query = _appDbContext.EvaluationTypes.AsQueryable();
 
@@ -40,13 +40,13 @@ namespace SemsApi.Services
 
             var getEvaluationTypes = await query
                 .OrderBy(t => t.EvaluationTypeId)
-                .ProjectToType<GetEvaluationTypeDto>()
+                .ProjectToType<EvaluationTypeDto>()
                 .ToListAsync();
 
             return new OkObjectResult(getEvaluationTypes);
         }
 
-        public async Task<ActionResult<GetEvaluationTypeDto>> GetByIdAsync(int id)
+        public async Task<ActionResult<EvaluationTypeDto>> GetByIdAsync(int id)
         {
             var evaluationType = await _appDbContext.EvaluationTypes
                     .AsNoTracking()
@@ -57,7 +57,7 @@ namespace SemsApi.Services
                 return new NotFoundObjectResult(new { message = "Evaluation type not found." });
             }
 
-            return new OkObjectResult(evaluationType.Adapt<GetEvaluationTypeDto>());
+            return new OkObjectResult(evaluationType.Adapt<EvaluationTypeDto>());
         }
 
         public async Task<ActionResult<CreateEvaluationTypeDto>> CreateAsync(CreateEvaluationTypeDto dto)
@@ -96,17 +96,16 @@ namespace SemsApi.Services
 
         public async Task<ActionResult<UpdateEvaluationTypeDto>> UpdateAsync(int id, UpdateEvaluationTypeDto dto)
         {
-            var evaluationType = await _appDbContext.EvaluationTypes.FirstOrDefaultAsync(t => t.EvaluationTypeId == id);
-
-            if (evaluationType is null)
-            {
-                return new NotFoundObjectResult(new { message = "Evaluation type not found." });
-            }
-
             var validationResults = await _updateValidator.ValidateAsync(dto);
             if (!validationResults.IsValid)
             {
                 return new BadRequestObjectResult(validationResults.ToValidationProblemDetails());
+            }
+
+            var evaluationType = await _appDbContext.EvaluationTypes.FirstOrDefaultAsync(t => t.EvaluationTypeId == id);
+            if (evaluationType is null)
+            {
+                return new NotFoundObjectResult(new { message = "Evaluation type not found." });
             }
 
             var evaluationTypeName = dto.EvaluationTypeName!.Trim();
