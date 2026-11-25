@@ -18,13 +18,13 @@ namespace SemsApi.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<GetEvaluationTypeDto>>> GetAll([FromQuery] string? search = null)
+        public async Task<ActionResult<List<EvaluationTypeDto>>> GetAll([FromQuery] string? search = null)
         {
             return await _service.GetAllAsync(search);
         }
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<GetEvaluationTypeDto>> GetById(int id)
+        public async Task<ActionResult<EvaluationTypeDto>> GetById(int id)
         {
             return await _service.GetByIdAsync(id);
         }
