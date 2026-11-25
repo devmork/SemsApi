@@ -1,5 +1,6 @@
 ﻿using Mapster;
 using SemsApi.DTO.EvaluationType;
+using SemsApi.DTO.Facility;
 using SemsApi.Models;
 
 namespace SemsApi.Utilities
@@ -11,8 +12,14 @@ namespace SemsApi.Utilities
             var config = TypeAdapterConfig.GlobalSettings;
 
             config.NewConfig<CreateEvaluationTypeDto, EvaluationType>();
-            config.NewConfig<GetEvaluationTypeDto, EvaluationType>();
-            config.NewConfig<UpdateEvaluationTypeDto, EvaluationType>();
+            config.NewConfig<EvaluationTypeDto, EvaluationType>();
+            config.NewConfig<UpdateEvaluationTypeDto, EvaluationType>()
+                .Ignore(e => e.EvaluationTypeId);
+
+            config.NewConfig<CreateFacilityDto, Facility>();
+            config.NewConfig<UpdateFacilityDto, Facility>()
+                .Ignore(f => f.FacilityId);
+            config.NewConfig<FacilityDto, Facility>();
         }
     }
 }
