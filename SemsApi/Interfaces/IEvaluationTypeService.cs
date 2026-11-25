@@ -7,8 +7,8 @@ namespace SemsApi.Interfaces
     {
         Task<ActionResult<List<GetEvaluationTypeDto>>> GetAllAsync(string? search = null);
         Task<ActionResult<GetEvaluationTypeDto>> GetByIdAsync(int id);
-        Task<ActionResult<CreateEvaluationTypeDto>> CreateAsync(CreateEvaluationTypeDto createEvaluationTypeDto);
-        Task<ActionResult<UpdateEvaluationTypeDto>> UpdateAsync(int id, UpdateEvaluationTypeDto updateEvaluationTypeDto);
+        Task<ActionResult<CreateEvaluationTypeDto>> CreateAsync(CreateEvaluationTypeDto dto);
+        Task<ActionResult<UpdateEvaluationTypeDto>> UpdateAsync(int id, UpdateEvaluationTypeDto dto);
         Task<ActionResult> DeleteAsync(int id);
     }
 }
