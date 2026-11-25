@@ -81,7 +81,7 @@ namespace SemsApi.Services
                         (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
                         (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now) &&
                         s.EvaluationForm.IsActive == 1 &&
-                        !s.EvaluationForm.EvaluationType.IsFacility)
+                        !FormHelper.IsFacilityEvaluation(s.EvaluationForm.EvaluationType))
                     .ToListAsync(ct);
 
                 foreach (var key in pendingRows
@@ -380,7 +380,7 @@ namespace SemsApi.Services
                 .AsNoTracking()
                 .Include(f => f.EvaluationType)
                 .Where(f => f.IsActive == 1
-                         && !f.EvaluationType.IsFacility)
+                         && !FormHelper.IsFacilityEvaluation(f.EvaluationType))
                 .OrderByDescending(f => f.CreatedAt)
                 .Select(f => new { f.FormId, f.EvaluationTypeId })
                 .FirstOrDefaultAsync(ct);

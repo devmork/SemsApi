@@ -62,7 +62,7 @@ namespace SemsApi.Services
                     (!s.OpensAtUtc.HasValue || s.OpensAtUtc <= now) &&
                     (!s.ClosesAtUtc.HasValue || s.ClosesAtUtc > now) &&
                     s.EvaluationForm.IsActive == 1 &&
-                    s.EvaluationForm.EvaluationType.IsFacility &&
+                    FormHelper.IsFacilityEvaluation(s.EvaluationForm.EvaluationType) &&
                     s.FacilityId.HasValue &&
                     facilityIds.Contains(s.FacilityId.Value));
 
@@ -104,8 +104,9 @@ namespace SemsApi.Services
 
             foreach (var session in sessions)
             {
-                if (!session.FacilityId.HasValue ||
-                    !facilitiesById.TryGetValue(session.FacilityId.Value, out var facility))
+                if (!session.FacilityId.HasValue)
+                    continue;
+                if (!facilitiesById.TryGetValue(session.FacilityId.Value, out var facility))
                     continue;
 
                 submissionLookup.TryGetValue(

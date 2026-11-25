@@ -1,3 +1,4 @@
+using Mapster;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
@@ -11,65 +12,53 @@ namespace SemsApi.Services
 {
     public class EvaluationTypeService : IEvaluationTypeService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext _appDbContext;
 
-        public EvaluationTypeService(ApplicationDbContext context)
+        public EvaluationTypeService(ApplicationDbContext appDbContext)
         {
-            _context = context;
+            _appDbContext = appDbContext;
         }
-
-        // ---------------------------------------------------------------------
-        // READ
-        // ---------------------------------------------------------------------
-
-        public async Task<ActionResult<List<EvaluationTypeResponseDto>>> GetAllAsync(string? search = null)
+        public async Task<ActionResult<List<GetEvaluationTypeDto>>> GetAllAsync(string? search = null)
         {
-            var query = _context.EvaluationTypes.AsQueryable();
+            var query = _appDbContext.EvaluationTypes.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var term = search.Trim();
-                query = query.Where(t => t.EvaluationTypeName.Contains(term));
+                var value = search.Trim();
+                query = query.Where(t => t.EvaluationTypeName.Contains(value));
             }
 
-            var data = await query
+            var getEvaluationTypes = await query
                 .OrderBy(t => t.EvaluationTypeId)
-                .Select(t => new EvaluationTypeResponseDto
-                {
-                    EvaluationTypeId = t.EvaluationTypeId,
-                    EvaluationTypeName = t.EvaluationTypeName,
-                    IsFacility = t.IsFacility
-                })
+                .ProjectToType<GetEvaluationTypeDto>()
                 .ToListAsync();
 
-            return new OkObjectResult(data);
+            return new OkObjectResult(getEvaluationTypes);
         }
 
-        public async Task<ActionResult<EvaluationTypeResponseDto>> GetByIdAsync(int id)
+        public async Task<ActionResult<GetEvaluationTypeDto>> GetByIdAsync(int id)
         {
-            var entity = await _context.EvaluationTypes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.EvaluationTypeId == id);
+            var evaluationType = await _appDbContext.EvaluationTypes
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.EvaluationTypeId == id);
 
-            if (entity is null)
+            if (evaluationType is null)
+            {
                 return new NotFoundObjectResult(new { message = "Evaluation type not found." });
+            }
 
-            return new OkObjectResult(EvaluationTypeHelper.MapToResponse(entity));
+            return new OkObjectResult(evaluationType.Adapt<GetEvaluationTypeDto>());
         }
 
-        // ---------------------------------------------------------------------
-        // CREATE
-        // ---------------------------------------------------------------------
-
-        public async Task<ActionResult<EvaluationTypeResponseDto>> CreateAsync(EvaluationTypeRequestDto request)
+        public async Task<ActionResult<CreateEvaluationTypeDto>> CreateAsync(CreateEvaluationTypeDto createEvaluationTypeDto)
         {
-            var validationError = EvaluationTypeHelper.Validate(request);
+            var validationError = EvaluationTypeHelper.Validate(createEvaluationTypeDto);
             if (validationError is not null)
                 return new BadRequestObjectResult(new { message = validationError });
 
-            var name = request.EvaluationTypeName!.Trim();
+            var name = createEvaluationTypeDto.EvaluationTypeName!.Trim();
 
-            var duplicateExists = await _context.EvaluationTypes
+            var duplicateExists = await _appDbContext.EvaluationTypes
                 .AnyAsync(t => t.EvaluationTypeName.ToLower() == name.ToLower());
 
             if (duplicateExists)
@@ -80,52 +69,36 @@ namespace SemsApi.Services
                 });
             }
 
-            var entity = new EvaluationType
-            {
-                EvaluationTypeName = name,
-                IsFacility = request.IsFacility ?? false
-            };
+            var evaluationType = createEvaluationTypeDto.Adapt<EvaluationType>();
+            _appDbContext.EvaluationTypes.Add(evaluationType);
 
-            _context.EvaluationTypes.Add(entity);
             try
             {
-                await _context.SaveChangesAsync();
+                await _appDbContext.SaveChangesAsync();
             }
             catch (DbUpdateException ex) when (Utilities.DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
             {
                 return new ConflictObjectResult(new { message = "An evaluation type with the same name already exists." });
             }
 
-            return new CreatedResult(
-                $"/api/evaluation/types/{entity.EvaluationTypeId}",
-                new
-                {
-                    message = "Evaluation type created successfully.",
-                    data = EvaluationTypeHelper.MapToResponse(entity)
-                });
+            return new CreatedResult();
         }
 
-        // ---------------------------------------------------------------------
-        // UPDATE
-        // ---------------------------------------------------------------------
-
-        public async Task<ActionResult<EvaluationTypeResponseDto>> UpdateAsync(int id, EvaluationTypeRequestDto request)
+        public async Task<ActionResult<UpdateEvaluationTypeDto>> UpdateAsync(int id, UpdateEvaluationTypeDto updateEvaluationTypeDto)
         {
-            var entity = await _context.EvaluationTypes
-                .FirstOrDefaultAsync(t => t.EvaluationTypeId == id);
+            var evaluationType = await _appDbContext.EvaluationTypes.FirstOrDefaultAsync(t => t.EvaluationTypeId == id);
 
-            if (entity is null)
+            if (evaluationType is null)
                 return new NotFoundObjectResult(new { message = "Evaluation type not found." });
 
-            var validationError = EvaluationTypeHelper.Validate(request);
-            if (validationError is not null)
-                return new BadRequestObjectResult(new { message = validationError });
+            //var validationError = EvaluationTypeHelper.Validate(updateEvaluationTypeDto);
+            //if (validationError is not null)
+            //    return new BadRequestObjectResult(new { message = validationError });
 
-            var name = request.EvaluationTypeName!.Trim();
+            var name = updateEvaluationTypeDto.EvaluationTypeName!.Trim();
 
-            var duplicateExists = await _context.EvaluationTypes
-                .AnyAsync(t => t.EvaluationTypeId != id
-                            && t.EvaluationTypeName.ToLower() == name.ToLower());
+            var duplicateExists = await _appDbContext.EvaluationTypes
+                                        .AnyAsync(t => t.EvaluationTypeId != id && t.EvaluationTypeName.ToLower() == name.ToLower());
 
             if (duplicateExists)
             {
@@ -135,36 +108,25 @@ namespace SemsApi.Services
                 });
             }
 
-            entity.EvaluationTypeName = name;
+            evaluationType.EvaluationTypeName = name;
 
-            if (request.IsFacility.HasValue)
-                entity.IsFacility = request.IsFacility.Value;
+            await _appDbContext.SaveChangesAsync();
 
-            await _context.SaveChangesAsync();
-
-            return new OkObjectResult(new
-            {
-                message = "Evaluation type updated successfully.",
-                data = EvaluationTypeHelper.MapToResponse(entity)
-            });
+            return new OkObjectResult(evaluationType.Adapt<UpdateEvaluationTypeDto>());
         }
-
-        // ---------------------------------------------------------------------
-        // DELETE
-        // ---------------------------------------------------------------------
 
         public async Task<ActionResult> DeleteAsync(int id)
         {
-            var entity = await _context.EvaluationTypes
+            var evaluationType = await _appDbContext.EvaluationTypes
                 .FirstOrDefaultAsync(t => t.EvaluationTypeId == id);
 
-            if (entity is null)
+            if (evaluationType is null)
                 return new NotFoundObjectResult(new { message = "Evaluation type not found." });
 
             var inUse =
-                await _context.TeacherEvaluationCategories.AnyAsync(c => c.EvaluationTypeId == id)
-                || await _context.Forms.AnyAsync(f => f.EvaluationTypeId == id)
-                || await _context.TeacherEvaluationComments.AnyAsync(s => s.EvaluationTypeId == id);
+                await _appDbContext.TeacherEvaluationCategories.AnyAsync(c => c.EvaluationTypeId == id)
+                || await _appDbContext.Forms.AnyAsync(f => f.EvaluationTypeId == id)
+                || await _appDbContext.TeacherEvaluationComments.AnyAsync(s => s.EvaluationTypeId == id);
 
             if (inUse)
             {
@@ -174,8 +136,8 @@ namespace SemsApi.Services
                 });
             }
 
-            _context.EvaluationTypes.Remove(entity);
-            await _context.SaveChangesAsync();
+            _appDbContext.EvaluationTypes.Remove(evaluationType);
+            await _appDbContext.SaveChangesAsync();
 
             return new NoContentResult();
         }

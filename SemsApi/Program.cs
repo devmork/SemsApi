@@ -19,8 +19,6 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
-
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
@@ -43,11 +41,16 @@ builder.Services.Scan(scan => scan
         .WithScopedLifetime()
  );
 
+builder.Services.AddOutputCache(options =>
+{
+    options.DefaultExpirationTimeSpan = TimeSpan.FromMinutes(30);
+});
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
-                       | ForwardedHeaders.XForwardedProto
-                       | ForwardedHeaders.XForwardedHost;
+                             | ForwardedHeaders.XForwardedProto
+                             | ForwardedHeaders.XForwardedHost;
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 });
@@ -119,17 +122,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddMemoryCache();
 
-// Sign-in codes and rate-limit counters live in process memory. This assumes a
-// single API instance; if MonsterASP ever scales out, move sign-in codes to
-// IDistributedCache or a database table and use a distributed rate limiter.
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("auth", opt =>
     {
-        // 60/min per IP (not 10) because a school network shares one NAT address,
-        // so a low limit would lock out an entire classroom. Still blocks
-        // sustained token guessing.
         opt.PermitLimit = 60;
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueLimit = 0;
@@ -184,7 +181,6 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    // Production only: HSTS must never be sent from the local dev cert.
     app.UseHsts();
 }
 
@@ -196,3 +192,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+public partial class Program { }

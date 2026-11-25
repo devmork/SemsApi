@@ -13,12 +13,12 @@ namespace SemsApi.Utilities
         public const int Active = 1;
 
         /// <summary>
-        /// True when the evaluation type is flagged as a facility/service evaluation
-        /// (Clinic, Canteen, ...). Detection is a database flag, not a name match, so
-        /// renaming an evaluation type cannot silently break the facility flow.
+        /// True when the evaluation type is a facility/service evaluation.
+        /// Detection is by name ("Facility"), not a DB flag, so the name must
+        /// be kept consistent when creating evaluation types.
         /// </summary>
         public static bool IsFacilityEvaluation(EvaluationType? evaluationType) =>
-            evaluationType?.IsFacility == true;
+            string.Equals(evaluationType?.EvaluationTypeName, "Facility", StringComparison.OrdinalIgnoreCase);
 
         public static FormDto MapToDto(EvaluationForm f, string evaluationTypeName) =>
             new()

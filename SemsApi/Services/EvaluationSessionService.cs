@@ -160,7 +160,7 @@ namespace SemsApi.Services
             if (EvaluationForm is null)
                 return new BadRequestObjectResult(new { message = "EvaluationForm not found." });
 
-            var isFacilityForm = EvaluationForm.EvaluationType.IsFacility;
+            var isFacilityForm = FormHelper.IsFacilityEvaluation(EvaluationForm.EvaluationType);
 
             if (isFacilityForm && !request.FacilityId.HasValue)
                 return new BadRequestObjectResult(new

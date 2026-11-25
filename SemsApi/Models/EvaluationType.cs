@@ -4,6 +4,5 @@ namespace SemsApi.Models
     {
         public int EvaluationTypeId { get; set; }
         public string EvaluationTypeName { get; set; } = string.Empty;
-        public bool IsFacility { get; set; }
     }
 }

@@ -17,49 +17,30 @@ namespace SemsApi.Controllers
             _service = service;
         }
 
-        // ---------------------------------------------------------------------
-        // READ
-        // ---------------------------------------------------------------------
-
         [HttpGet]
-        public async Task<ActionResult<List<EvaluationTypeResponseDto>>> GetAll(
+        public async Task<ActionResult<List<GetEvaluationTypeDto>>> GetAll(
             [FromQuery] string? search = null)
         {
             return await _service.GetAllAsync(search);
         }
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<EvaluationTypeResponseDto>> GetById(int id)
+        public async Task<ActionResult<GetEvaluationTypeDto>> GetById(int id)
         {
             return await _service.GetByIdAsync(id);
         }
 
-        // ---------------------------------------------------------------------
-        // CREATE
-        // ---------------------------------------------------------------------
-
         [HttpPost]
-        public async Task<ActionResult<EvaluationTypeResponseDto>> Create(
-            [FromBody] EvaluationTypeRequestDto request)
+        public async Task<ActionResult<CreateEvaluationTypeDto>> Create([FromBody] CreateEvaluationTypeDto createEvaluationTypeDto)
         {
-            return await _service.CreateAsync(request);
+            return await _service.CreateAsync(createEvaluationTypeDto);
         }
-
-        // ---------------------------------------------------------------------
-        // UPDATE
-        // ---------------------------------------------------------------------
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<EvaluationTypeResponseDto>> Update(
-            int id,
-            [FromBody] EvaluationTypeRequestDto request)
+        public async Task<ActionResult<UpdateEvaluationTypeDto>> Update(int id, [FromBody] UpdateEvaluationTypeDto updateEvaluationTypeDto)
         {
-            return await _service.UpdateAsync(id, request);
+            return await _service.UpdateAsync(id, updateEvaluationTypeDto);
         }
-
-        // ---------------------------------------------------------------------
-        // DELETE
-        // ---------------------------------------------------------------------
 
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)

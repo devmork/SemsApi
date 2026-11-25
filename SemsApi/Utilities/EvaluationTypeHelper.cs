@@ -10,15 +10,14 @@ namespace SemsApi.Utilities
     {
         public const int MaxNameLength = 100;
 
-        public static EvaluationTypeResponseDto MapToResponse(EvaluationType e) =>
+        public static GetEvaluationTypeDto MapToResponse(EvaluationType e) =>
             new()
             {
                 EvaluationTypeId = e.EvaluationTypeId,
-                EvaluationTypeName = e.EvaluationTypeName,
-                IsFacility = e.IsFacility
+                EvaluationTypeName = e.EvaluationTypeName
             };
 
-        public static string? Validate(EvaluationTypeRequestDto request)
+        public static string? Validate(CreateEvaluationTypeDto request)
         {
             if (request is null)
                 return "Request body is required.";
