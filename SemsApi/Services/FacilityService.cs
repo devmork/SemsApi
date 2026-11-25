@@ -1,3 +1,5 @@
+using FluentValidation;
+using Mapster;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
@@ -11,116 +13,127 @@ namespace SemsApi.Services
     public class FacilityService : IFacilityService
     {
         private readonly ApplicationDbContext _context;
-        public FacilityService(ApplicationDbContext context) { _context = context; }
+        private readonly IValidator<CreateFacilityDto> _createValidator;
+        private readonly IValidator<UpdateFacilityDto> _updateValidator;
+        public FacilityService(
+            ApplicationDbContext context,
+            IValidator<CreateFacilityDto> createValidator,
+            IValidator<UpdateFacilityDto> updateValidator)
+        {
+            _context = context;
+            _createValidator = createValidator;
+            _updateValidator = updateValidator;
+        }
 
         public async Task<ActionResult<List<FacilityDto>>> GetAllAsync(
-            string? search = null, bool? isActive = null, CancellationToken ct = default)
+            string? search = null,
+            bool? isActive = null,
+            CancellationToken ct = default)
         {
             var query = _context.Facilities.AsNoTracking().AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var term = search.Trim();
-                query = query.Where(f => f.FacilityName.Contains(term));
+                query = query.Where(f => f.FacilityName!.Contains(term));
             }
+
             if (isActive.HasValue) query = query.Where(f => f.IsActive == isActive.Value);
 
-            var data = await query
+            var facility = await query
                 .OrderBy(f => f.FacilityName)
-                .Select(f => new FacilityDto
-                {
-                    FacilityId = f.FacilityId,
-                    FacilityName = f.FacilityName,
-                    IsActive = f.IsActive,
-                    CreatedAt = f.CreatedAt,
-                    UpdatedAt = f.UpdatedAt,
-                    EvaluationCount = f.EvaluationSubmissions.Count
-                })
+                .ProjectToType<FacilityDto>()
                 .ToListAsync(ct);
 
-            return new OkObjectResult(data);
+            return new OkObjectResult(facility);
         }
 
-        public async Task<ActionResult<FacilityDto>> GetByIdAsync(int id, CancellationToken ct = default)
+        public async Task<ActionResult<FacilityDto>> GetByIdAsync(
+            int id,
+            CancellationToken ct = default)
         {
-            var dto = await _context.Facilities.AsNoTracking()
+            var facility = await _context.Facilities
+                .AsNoTracking()
                 .Where(f => f.FacilityId == id)
-                .Select(f => new FacilityDto
-                {
-                    FacilityId = f.FacilityId,
-                    FacilityName = f.FacilityName,
-                    IsActive = f.IsActive,
-                    CreatedAt = f.CreatedAt,
-                    UpdatedAt = f.UpdatedAt,
-                    EvaluationCount = f.EvaluationSubmissions.Count
-                })
+                .ProjectToType<FacilityDto>()
                 .FirstOrDefaultAsync(ct);
 
-            if (dto is null)
+            if (facility is null)
+            {
                 return new NotFoundObjectResult(new { message = "Facility not found." });
+            }
 
-            return new OkObjectResult(dto);
+            return new OkObjectResult(facility);
         }
 
-        public async Task<ActionResult<FacilityDto>> CreateAsync(
-            CreateFacilityRequest request, CancellationToken ct = default)
+        public async Task<ActionResult<CreateFacilityDto>> CreateAsync(
+            CreateFacilityDto dto,
+            CancellationToken ct = default)
         {
-            var validationError = FacilityHelper.ValidateCreate(request);
-            if (validationError is not null)
-                return new BadRequestObjectResult(new { message = validationError });
 
-            var name = request.FacilityName.Trim();
-            if (await _context.Facilities.AnyAsync(f => f.FacilityName.ToLower() == name.ToLower(), ct))
-                return new ConflictObjectResult(new { message = "A facility with this name already exists." });
-
-            var entity = new Facility
+            var validationResults = await _createValidator.ValidateAsync(dto, ct);
+            if (!validationResults.IsValid)
             {
-                FacilityName = name,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            _context.Facilities.Add(entity);
+                return new BadRequestObjectResult(validationResults.ToValidationProblemDetails());
+            }
+
+            var name = dto.FacilityName!.Trim();
+            if (await _context.Facilities.AnyAsync(f => f.FacilityName!.ToLower() == name.ToLower(), ct))
+            {
+                return new ConflictObjectResult(new { message = "A facility with this name already exists." });
+            }
+
+            var facility = dto.Adapt<Facility>();
+            _context.Facilities.Add(facility);
             await _context.SaveChangesAsync(ct);
 
-            return new CreatedResult(
-                $"/api/facilities/{entity.FacilityId}",
-                FacilityHelper.MapToDto(entity, 0));
+            return new CreatedResult();
         }
 
-        public async Task<ActionResult<FacilityDto>> UpdateAsync(
-            int id, UpdateFacilityRequest request, CancellationToken ct = default)
+        public async Task<ActionResult<UpdateFacilityDto>> UpdateAsync(
+            int id, 
+            UpdateFacilityDto dto, CancellationToken ct = default)
         {
-            var validationError = FacilityHelper.ValidateUpdate(request);
-            if (validationError is not null)
-                return new BadRequestObjectResult(new { message = validationError });
+            var validationResults = await _updateValidator.ValidateAsync(dto, ct);
+            if (!validationResults.IsValid)
+            {
+                return new BadRequestObjectResult(validationResults.ToValidationProblemDetails());
+            }
 
-            var entity = await _context.Facilities.FirstOrDefaultAsync(f => f.FacilityId == id, ct);
-            if (entity is null)
+            var facility = await _context.Facilities
+                .ProjectToType<Facility>()
+                .FirstOrDefaultAsync(f => f.FacilityId == id, ct);
+            if (facility is null)
+            {
                 return new NotFoundObjectResult(new { message = "Facility not found." });
+            }
 
-            var name = request.FacilityName.Trim();
-            if (await _context.Facilities.AnyAsync(
-                    f => f.FacilityId != id && f.FacilityName.ToLower() == name.ToLower(), ct))
+            var facilityName = dto.FacilityName!.Trim();
+            if (await _context.Facilities.AnyAsync(f => f.FacilityId != id && f.FacilityName!.ToLower() == facilityName.ToLower(), ct))
+            {
                 return new ConflictObjectResult(new { message = "A facility with this name already exists." });
+            }
 
-            entity.FacilityName = name;
-            if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
-            entity.UpdatedAt = DateTime.UtcNow;
+            facility.FacilityName = facilityName;
+            if (dto.IsActive.HasValue) facility.IsActive = dto.IsActive.Value;
+            facility.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(ct);
 
             var count = await _context.FacilityEvaluationSubmissions
-                .AsNoTracking().CountAsync(s => s.FacilityId == id, ct);
+                .AsNoTracking()
+                .CountAsync(s => s.FacilityId == id, ct);
 
-            return new OkObjectResult(FacilityHelper.MapToDto(entity, count));
+            return new OkObjectResult(facility);
         }
 
         public async Task<ActionResult> DeleteAsync(int id, CancellationToken ct = default)
         {
-            var entity = await _context.Facilities.FirstOrDefaultAsync(f => f.FacilityId == id, ct);
-            if (entity is null)
+            var facility = await _context.Facilities.FirstOrDefaultAsync(f => f.FacilityId == id, ct);
+            if (facility is null)
+            {
                 return new NotFoundObjectResult(new { message = "Facility not found." });
+            }
 
             var hasSubmissions = await _context.FacilityEvaluationSubmissions
                 .AnyAsync(s => s.FacilityId == id, ct);
@@ -130,7 +143,7 @@ namespace SemsApi.Services
                     message = "Cannot delete: facility has evaluation submissions. Deactivate it instead."
                 });
 
-            _context.Facilities.Remove(entity);
+            _context.Facilities.Remove(facility);
             await _context.SaveChangesAsync(ct);
             return new NoContentResult();
         }
