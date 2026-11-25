@@ -9,6 +9,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="FluentValidation" Version="10.4.0" />
+		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="10.4.0" />
 		<PackageReference Include="Google.Apis.Auth.AspNetCore3" Version="1.78.0" />
 		<PackageReference Include="Mapster" Version="10.0.14" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.15" />
@@ -30,6 +31,10 @@
 		<PackageReference Include="Scrutor" Version="7.0.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="11.0.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="11.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Validations\Facility\" />
 	</ItemGroup>
 
 </Project>
