@@ -474,9 +474,6 @@ namespace SemsApi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<bool>("IsFacility")
-                        .HasColumnType("bit");
-
                     b.HasKey("EvaluationTypeId");
 
                     b.HasIndex("EvaluationTypeName")
