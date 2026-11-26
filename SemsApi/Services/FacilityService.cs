@@ -1,5 +1,6 @@
 using FluentValidation;
 using Mapster;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SemsApi.Data;
@@ -60,7 +61,7 @@ namespace SemsApi.Services
 
             if (facility is null)
             {
-                return new NotFoundObjectResult(new { message = "Facility not found." });
+                return new NotFoundResult();
             }
 
             return new OkObjectResult(facility);
@@ -80,7 +81,7 @@ namespace SemsApi.Services
             var name = dto.FacilityName!.Trim();
             if (await _context.Facilities.AnyAsync(f => f.FacilityName!.ToLower() == name.ToLower(), ct))
             {
-                return new ConflictObjectResult(new { message = "A facility with this name already exists." });
+                return new ConflictResult();
             }
 
             var facility = dto.Adapt<Facility>();
@@ -105,13 +106,13 @@ namespace SemsApi.Services
                 .FirstOrDefaultAsync(f => f.FacilityId == id, ct);
             if (facility is null)
             {
-                return new NotFoundObjectResult(new { message = "Facility not found." });
+                return new NotFoundResult();
             }
 
             var facilityName = dto.FacilityName!.Trim();
             if (await _context.Facilities.AnyAsync(f => f.FacilityId != id && f.FacilityName!.ToLower() == facilityName.ToLower(), ct))
             {
-                return new ConflictObjectResult(new { message = "A facility with this name already exists." });
+                return new ConflictResult();
             }
 
             facility.FacilityName = facilityName;
@@ -132,16 +133,13 @@ namespace SemsApi.Services
             var facility = await _context.Facilities.FirstOrDefaultAsync(f => f.FacilityId == id, ct);
             if (facility is null)
             {
-                return new NotFoundObjectResult(new { message = "Facility not found." });
+                return new NotFoundResult();
             }
 
             var hasSubmissions = await _context.FacilityEvaluationSubmissions
                 .AnyAsync(s => s.FacilityId == id, ct);
             if (hasSubmissions)
-                return new ConflictObjectResult(new
-                {
-                    message = "Cannot delete: facility has evaluation submissions. Deactivate it instead."
-                });
+                return new ConflictResult();
 
             _context.Facilities.Remove(facility);
             await _context.SaveChangesAsync(ct);

@@ -54,7 +54,7 @@ namespace SemsApi.Services
 
             if (evaluationType is null)
             {
-                return new NotFoundObjectResult(new { message = "Evaluation type not found." });
+                return new NotFoundResult();
             }
 
             return new OkObjectResult(evaluationType.Adapt<EvaluationTypeDto>());
@@ -73,10 +73,7 @@ namespace SemsApi.Services
 
             if (duplicateExists)
             {
-                return new ConflictObjectResult(new
-                {
-                    message = "An evaluation type with the same name already exists."
-                });
+                return new ConflictResult();
             }
 
             var evaluationType = dto.Adapt<EvaluationType>();
@@ -88,7 +85,7 @@ namespace SemsApi.Services
             }
             catch (DbUpdateException ex) when (Utilities.DbUpdateExceptionHelper.IsUniqueConstraintViolation(ex))
             {
-                return new ConflictObjectResult(new { message = "An evaluation type with the same name already exists." });
+                return new ConflictResult();
             }
 
             return new CreatedResult();
@@ -105,7 +102,7 @@ namespace SemsApi.Services
             var evaluationType = await _appDbContext.EvaluationTypes.FirstOrDefaultAsync(t => t.EvaluationTypeId == id);
             if (evaluationType is null)
             {
-                return new NotFoundObjectResult(new { message = "Evaluation type not found." });
+                return new NotFoundResult();
             }
 
             var evaluationTypeName = dto.EvaluationTypeName!.Trim();
@@ -115,16 +112,11 @@ namespace SemsApi.Services
 
             if (duplicateExists)
             {
-                return new ConflictObjectResult(new
-                {
-                    message = "An evaluation type with the same name already exists."
-                });
+                return new ConflictResult();
             }
 
             evaluationType.EvaluationTypeName = evaluationTypeName;
-
             await _appDbContext.SaveChangesAsync();
-
             return new OkObjectResult(evaluationType.Adapt<UpdateEvaluationTypeDto>());
         }
 
@@ -135,7 +127,7 @@ namespace SemsApi.Services
 
             if (evaluationType is null)
             {
-                return new NotFoundObjectResult(new { message = "Evaluation type not found." });
+                return new NotFoundResult();
             }
 
             var inUse =
@@ -145,10 +137,7 @@ namespace SemsApi.Services
 
             if (inUse)
             {
-                return new ConflictObjectResult(new
-                {
-                    message = "Cannot delete this evaluation type because categories, forms or comments are using it."
-                });
+                return new ConflictResult();
             }
 
             _appDbContext.EvaluationTypes.Remove(evaluationType);
