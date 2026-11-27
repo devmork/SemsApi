@@ -15,6 +15,7 @@ using SemsApi.Models;
 using SemsApi.Seeders;
 using SemsApi.Services;
 using SemsApi.Utilities;
+using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
 using System.Text;
 using System.Text.Json;
 
@@ -132,13 +133,11 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueLimit = 0;
     });
 });
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "SEMS API", Version = "v1" });
-
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -153,9 +152,13 @@ builder.Services.AddSwaggerGen(options =>
     {
         [new OpenApiSecuritySchemeReference("Bearer", document)] = []
     });
+
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "SemsApi.xml"));
+
 });
 builder.Services.AddProblemDetails();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
@@ -168,8 +171,6 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
     await RoleSeeder.SeedAsync(roleManager);
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await FacilitySeeder.SeedAsync(dbContext);
 }
 
 if (app.Environment.IsDevelopment())
