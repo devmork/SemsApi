@@ -5,10 +5,13 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<PreserveCompilationContext>true</PreserveCompilationContext>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);1591</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="FluentValidation" Version="10.4.0" />
+		<PackageReference Include="FluentValidation.AspNetCore" Version="10.4.0" />
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="10.4.0" />
 		<PackageReference Include="Google.Apis.Auth.AspNetCore3" Version="1.78.0" />
 		<PackageReference Include="Mapster" Version="10.0.14" />
@@ -29,6 +32,7 @@
 		</PackageReference>
 		<PackageReference Include="Riok.Mapperly" Version="4.3.1" />
 		<PackageReference Include="Scrutor" Version="7.0.0" />
+		<PackageReference Include="SharpGrip.FluentValidation.AutoValidation.Mvc" Version="2.0.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="11.0.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="11.0.0" />
 	</ItemGroup>
