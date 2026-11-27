@@ -12,12 +12,8 @@ namespace SemsApi.Data
             : base(options)
         {
         }
-
-        // Business tables
         public DbSet<Student> Students => Set<Student>();
         public DbSet<Teacher> Teachers => Set<Teacher>();
-
-        // Evaluation tables
         public DbSet<EvaluationForm> Forms => Set<EvaluationForm>();
         public DbSet<EvaluationType> EvaluationTypes => Set<EvaluationType>();
         public DbSet<EvaluationCategory> TeacherEvaluationCategories => Set<EvaluationCategory>();
@@ -26,20 +22,13 @@ namespace SemsApi.Data
         public DbSet<EvaluationFormQuestionAnswer> EvaluationFormQuestionAnswers => Set<EvaluationFormQuestionAnswer>();
         public DbSet<TeacherEvaluationComment> TeacherEvaluationComments => Set<TeacherEvaluationComment>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
-        // Subject / SubjectOffering / Enrollment
         public DbSet<Subject> Subjects => Set<Subject>();
         public DbSet<SubjectOffering> SubjectOfferings => Set<SubjectOffering>();
         public DbSet<StudentSubjectEnrollment> StudentSubjectEnrollments => Set<StudentSubjectEnrollment>();
         public DbSet<StudentTermEnrollment> StudentTermEnrollments => Set<StudentTermEnrollment>();
-
-        // Evaluation submissions
         public DbSet<TeacherEvaluationSubmission> TeacherEvaluationSubmissions => Set<TeacherEvaluationSubmission>();
         public DbSet<TeacherEvaluationAnswer> TeacherEvaluationAnswers => Set<TeacherEvaluationAnswer>();
-
-        //Evaluation Session
         public DbSet<EvaluationSession> EvaluationSessions => Set<EvaluationSession>();
-
-        // Facility evaluations
         public DbSet<Facility> Facilities => Set<Facility>();
         public DbSet<FacilityEvaluationSubmission> FacilityEvaluationSubmissions => Set<FacilityEvaluationSubmission>();
         public DbSet<FacilityEvaluationAnswer> FacilityEvaluationAnswers => Set<FacilityEvaluationAnswer>();
@@ -84,9 +73,6 @@ namespace SemsApi.Data
             // =====================================================
             modelBuilder.Entity<Role>(e =>
             {
-                e.Property(r => r.Description)
-                    .HasMaxLength(250);
-
                 e.Property(r => r.IsActive)
                     .HasDefaultValue(true);
 
@@ -171,7 +157,6 @@ namespace SemsApi.Data
             {
                 e.ToTable("EvaluationType", "Eval");
                 e.HasKey(x => x.EvaluationTypeId);
-                e.Property(x => x.EvaluationTypeId).ValueGeneratedOnAdd();
                 e.Property(x => x.EvaluationTypeName).IsRequired().HasMaxLength(100);
                 e.HasIndex(x => x.EvaluationTypeName).IsUnique();
             });
